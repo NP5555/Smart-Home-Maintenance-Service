@@ -37,9 +37,11 @@ describe('SlaCalendar calling hours 08:00-22:00 Asia/Karachi', () => {
   });
 
   it('FR-VC-14: spans multiple days, pausing every night', () => {
-    expect(addBusinessMinutes(iso('2026-09-25T09:00:00.000Z'), SlaCalendar.minutesPerDay).toISOString()).toBe('2026-09-25T17:00:00.000Z');
-    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 2_000).toISOString()).toBe('2026-09-27T04:20:00.000Z');
-    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), SlaCalendar.minutesPerDay * 5).toISOString()).toBe('2026-10-01T17:00:00.000Z');
+    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 780).toISOString()).toBe('2026-09-25T17:00:00.000Z');
+    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 781).toISOString()).toBe('2026-09-26T03:01:00.000Z');
+    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 2_000).toISOString()).toBe('2026-09-27T09:20:00.000Z');
+    expect(addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 4_200).toISOString()).toBe('2026-09-30T04:00:00.000Z');
+    expect(addBusinessMinutes(iso('2026-09-25T03:00:00.000Z'), SlaCalendar.minutesPerDay).toISOString()).toBe('2026-09-26T17:00:00.000Z');
   });
 
   it('FR-VC-14: never lands on a minute outside the calling window', () => {
@@ -57,7 +59,8 @@ describe('SlaCalendar calling hours 08:00-22:00 Asia/Karachi', () => {
   });
 
   it('measures elapsed business minutes symmetrically', () => {
-    expect(businessMinutesBetween(iso('2026-09-25T04:00:00.000Z'), iso('2026-09-25T17:00:00.000Z'))).toBe(SlaCalendar.minutesPerDay);
+    expect(businessMinutesBetween(iso('2026-09-25T04:00:00.000Z'), iso('2026-09-25T17:00:00.000Z'))).toBe(780);
+    expect(businessMinutesBetween(iso('2026-09-25T03:00:00.000Z'), iso('2026-09-25T17:00:00.000Z'))).toBe(SlaCalendar.minutesPerDay);
     expect(businessMinutesBetween(iso('2026-09-25T04:00:00.000Z'), addBusinessMinutes(iso('2026-09-25T04:00:00.000Z'), 1_000))).toBe(1_000);
     expect(businessMinutesBetween(iso('2026-09-25T17:00:00.000Z'), iso('2026-09-25T04:00:00.000Z'))).toBe(0);
   });
