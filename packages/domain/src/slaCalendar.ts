@@ -2,6 +2,8 @@ export const BUSINESS_TIME_ZONE = 'Asia/Karachi';
 export const BUSINESS_DAY_START_HOUR = 8;
 export const BUSINESS_DAY_END_HOUR = 22;
 export const BUSINESS_MINUTES_PER_DAY = (BUSINESS_DAY_END_HOUR - BUSINESS_DAY_START_HOUR) * 60;
+const OPEN_MINUTE_OF_DAY = BUSINESS_DAY_START_HOUR * 60;
+const CLOSE_MINUTE_OF_DAY = BUSINESS_DAY_END_HOUR * 60;
 
 type WallTime = { year: number; month: number; day: number; hour: number; minute: number };
 
@@ -23,13 +25,16 @@ export const wallTimeIn = (instant: Date): WallTime => {
   return { year: parts.year ?? 0, month: parts.month ?? 1, day: parts.day ?? 1, hour: parts.hour ?? 0, minute: parts.minute ?? 0 };
 };
 
-const offsetOf = (wall: WallTime): number => {
-  const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute);
-  const observed = wallTimeIn(new Date(asUtc));
-  return asUtc - Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute);
+const zoneOffsetMs = (candidate: number): number => {
+  const observed = wallTimeIn(new Date(candidate));
+  return Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute) - candidate;
 };
 
-export const instantFromWallTime = (wall: WallTime): Date => new Date(Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute) - offsetOf(wall));
+export const instantFromWallTime = (wall: WallTime): Date => {
+  const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute);
+  const firstPass = asUtc - zoneOffsetMs(asUtc);
+  return new Date(asUtc - zoneOffsetMs(firstPass));
+};
 
 const wallTimeFromDay = (wall: WallTime, dayOffset: number): WallTime => {
   const shifted = new Date(Date.UTC(wall.year, wall.month - 1, wall.day + dayOffset, wall.hour, wall.minute));
@@ -43,22 +48,21 @@ const closeAt = (wall: WallTime): WallTime => ({ ...wall, hour: BUSINESS_DAY_END
 const minutesOf = (wall: WallTime): number => wall.hour * 60 + wall.minute;
 
 export const isWithinBusinessHours = (instant: Date): boolean => {
-  const wall = wallTimeIn(instant);
-  const minutes = minutesOf(wall);
-  return minutes >= BUSINESS_DAY_START_HOUR * 60 && minutes < BUSINESS_DAY_END_HOUR * 60;
+  const minutes = minutesOf(wallTimeIn(instant));
+  return minutes >= OPEN_MINUTE_OF_DAY && minutes <= CLOSE_MINUTE_OF_DAY;
 };
 
 export const nextBusinessInstant = (instant: Date): Date => {
   const wall = wallTimeIn(instant);
   if (isWithinBusinessHours(instant)) return new Date(instant);
-  if (minutesOf(wall) < BUSINESS_DAY_START_HOUR * 60) return instantFromWallTime(openAt(wall));
+  if (minutesOf(wall) < OPEN_MINUTE_OF_DAY) return instantFromWallTime(openAt(wall));
   return instantFromWallTime(openAt(wallTimeFromDay(wall, 1)));
 };
 
 export const previousBusinessInstant = (instant: Date): Date => {
   const wall = wallTimeIn(instant);
   if (isWithinBusinessHours(instant)) return new Date(instant);
-  if (minutesOf(wall) >= BUSINESS_DAY_END_HOUR * 60) return instantFromWallTime(closeAt(wall));
+  if (minutesOf(wall) > CLOSE_MINUTE_OF_DAY) return instantFromWallTime(closeAt(wall));
   return instantFromWallTime(closeAt(wallTimeFromDay(wall, -1)));
 };
 
@@ -69,7 +73,7 @@ export const addBusinessMinutes = (start: Date, minutes: number): Date => {
   let remaining = minutes;
   while (remaining > 0) {
     const wall = wallTimeIn(cursor);
-    const available = BUSINESS_DAY_END_HOUR * 60 - minutesOf(wall);
+    const available = CLOSE_MINUTE_OF_DAY - minutesOf(wall);
     if (remaining <= available) {
       const target = new Date(cursor.getTime() + remaining * 60_000);
       return remaining === available ? instantFromWallTime(closeAt(wall)) : target;
@@ -86,8 +90,10 @@ export const businessMinutesBetween = (from: Date, to: Date): number => {
   let cursor = nextBusinessInstant(from);
   while (cursor.getTime() < to.getTime()) {
     const wall = wallTimeIn(cursor);
-    const available = Math.min(BUSINESS_DAY_END_HOUR * 60 - minutesOf(wall), Math.ceil((to.getTime() - cursor.getTime()) / 60_000));
-    total += available;
+    const minutesLeftToday = CLOSE_MINUTE_OF_DAY - minutesOf(wall);
+    const minutesLeftOverall = Math.ceil((to.getTime() - cursor.getTime()) / 60_000);
+    total += Math.min(minutesLeftToday, minutesLeftOverall);
+    if (minutesLeftOverall <= minutesLeftToday) break;
     cursor = instantFromWallTime(openAt(wallTimeFromDay(wall, 1)));
   }
   return total;

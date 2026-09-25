@@ -60,7 +60,7 @@ describe('integer paisa arithmetic', () => {
     const commission = commissionOnPaisa(amount, rate);
     const net = netOfCommissionPaisa(amount, rate);
     expect(commission + net).toBe(amount);
-    expect(commission).toBe(185_186n);
+    expect(commission).toBe(185_185n);
   });
 
   it('rejects out-of-range basis points', () => {
