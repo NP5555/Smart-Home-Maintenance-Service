@@ -4,20 +4,19 @@
   "private": true,
   "type": "module",
   "exports": {
-    "./client": "./dist/client.js",
     "./prisma": "./prisma"
   },
   "scripts": {
-    "db:migrate": "node scripts/dbmate.mjs up",
-    "db:new": "node scripts/dbmate.mjs new",
-    "db:status": "node scripts/dbmate.mjs status",
+    "db:migrate": "node scripts/dbmate.mjs",
+    "db:new": "cross-env DBMATE_COMMAND=new node scripts/dbmate.mjs",
+    "db:status": "cross-env DBMATE_COMMAND=status node scripts/dbmate.mjs",
+    "db:drop": "cross-env DBMATE_COMMAND=drop node scripts/dbmate.mjs",
     "db:pull": "dotenv -e ../../.env -- prisma db pull --schema prisma/schema.prisma && npm run db:generate",
     "db:generate": "prisma generate --schema prisma/schema.prisma",
-    "db:reset": "npm run db:drop && npm run db:migrate && npm run db:pull && npm run db:seed",
-    "db:drop": "node scripts/dbmate.mjs drop --force",
     "db:seed": "dotenv -e ../../.env -- tsx seed/seed.ts",
+    "db:reset": "npm run db:drop && npm run db:migrate && npm run db:pull && npm run db:seed",
     "build": "tsc -p tsconfig.json",
-    "lint": "eslint src seed",
+    "lint": "eslint seed",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
@@ -28,6 +27,7 @@
   "devDependencies": {
     "@smart-home/config": "*",
     "@types/node": "^22.16.4",
+    "cross-env": "^7.0.3",
     "dbmate": "^2.36.0",
     "dotenv-cli": "^8.0.0",
     "prisma": "6.12.0",

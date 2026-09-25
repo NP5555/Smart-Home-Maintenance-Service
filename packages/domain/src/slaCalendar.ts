@@ -25,7 +25,8 @@ export const wallTimeIn = (instant: Date): WallTime => {
 
 const offsetOf = (wall: WallTime): number => {
   const asUtc = Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute);
-  return asUtc - wallTimeIn(new Date(asUtc)).let((observed) => Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute));
+  const observed = wallTimeIn(new Date(asUtc));
+  return asUtc - Date.UTC(observed.year, observed.month - 1, observed.day, observed.hour, observed.minute);
 };
 
 export const instantFromWallTime = (wall: WallTime): Date => new Date(Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute) - offsetOf(wall));

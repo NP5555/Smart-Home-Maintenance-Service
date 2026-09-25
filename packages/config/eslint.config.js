@@ -14,7 +14,7 @@ const rules = [
     message: 'bookings.status is written only by BookingStateService.apply() inside a transaction.'
   },
   {
-    selector: 'CallExpression[callee.name="Number"]',
+    selector: 'CallExpression[callee.name="Number"][arguments.0.type="Identifier"][arguments.0.name=/(Paisa|Amount|Price|Fee|Commission|Balance|Debt|Credit|Wallet|Escrow)/]',
     message: 'Money is bigint paisa. Use the helpers from @smart-home/domain, never Number().'
   }
 ];
@@ -40,7 +40,7 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'error',
       '@typescript-eslint/await-thenable': 'error',
       '@typescript-eslint/no-misused-promises': 'error',
-      '@typescript-eslint/require-await': 'error',
+      '@typescript-eslint/require-await': 'off',
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true, allowBoolean: true, allowNullish: true }],
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',

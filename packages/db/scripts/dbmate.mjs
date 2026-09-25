@@ -1,12 +1,13 @@
 import { spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const repositoryRoot = resolve(packageRoot, '..', '..');
 
-const parseEnvFile = (path) => {
+const parseEnvFile = path => {
   const values = {};
   for (const line of readFileSync(path, 'utf8').split(/\r?\n/)) {
     const trimmed = line.trim();
@@ -21,50 +22,50 @@ const parseEnvFile = (path) => {
   return values;
 };
 
-const env = {
-  ...parseEnvFile(resolve(repositoryRoot, '.env')),
-  ...process.env
-};
+const env = { ...parseEnvFile(resolve(repositoryRoot, '.env')), ...process.env };
 
-const source = env.DATABASE_URL ?? env.DIRECT_URL;
+const source = env.DIRECT_URL ?? env.DATABASE_URL;
 if (source === undefined) {
-  process.stderr.write('DATABASE_URL or DIRECT_URL must be set in .env\n');
+  process.stderr.write('DIRECT_URL or DATABASE_URL must be set in .env\n');
   process.exit(1);
 }
 
 const toMigrationUrl = value => {
   const url = new URL(value);
-  url.searchParams.delete('schema');
-  url.searchParams.delete('connection_limit');
-  url.searchParams.delete('pool_timeout');
-  url.searchParams.delete('pgbouncer');
+  for (const parameter of ['schema', 'connection_limit', 'pool_timeout', 'pgbouncer']) url.searchParams.delete(parameter);
   if (url.searchParams.get('sslmode') === null) url.searchParams.set('sslmode', 'disable');
   return url.toString();
 };
 
-const resolveBinary = () => {
-  const name = 'dbmate';
-  const suffix = process.platform === 'win32' ? '.CMD' : '';
-  const searchRoots = [resolve(packageRoot, 'node_modules', '.bin'), resolve(repositoryRoot, 'node_modules', '.bin')];
-  for (const root of searchRoots) {
-    const candidate = resolve(root, `${name}${suffix}`);
-    if (existsSync(candidate)) return candidate;
-  }
-  return `${name}${suffix}`;
-};
+const require = createRequire(import.meta.url);
+const cli = require.resolve('dbmate/dist/cli.js');
 
-const arguments_ = [resolveBinary(), '--migrations-dir', 'migrations', '--no-dump-schema', '--url', toMigrationUrl(source)];
-if (process.env.DBMATE_COMMAND === 'drop') {
-  arguments_.push('drop', '--force');
-} else {
-  arguments_.push(process.env.DBMATE_COMMAND ?? 'up');
+const command = process.env.DBMATE_COMMAND ?? 'up';
+const dbmateArguments = ['--migrations-dir', 'migrations', '--no-dump-schema', '--url', toMigrationUrl(source), command];
+if (command === 'new') dbmateArguments.push(process.env.DBMATE_MIGRATION_NAME ?? 'next_migration');
+
+if (!existsSync(cli)) {
+  process.stderr.write(`dbmate is not installed: ${cli}\n`);
+  process.exit(1);
 }
 
-const child = spawn(arguments_[0] ?? 'dbmate', arguments_.slice(1), {
+const isInteractiveDrop = command === 'drop';
+
+const child = spawn(process.execPath, [cli, ...dbmateArguments], {
   cwd: packageRoot,
   env: { ...env, DATABASE_URL: toMigrationUrl(source) },
-  stdio: 'inherit',
+  stdio: isInteractiveDrop ? ['pipe', 'inherit', 'inherit'] : 'inherit',
   windowsHide: true
 });
 
-child.on('exit', code => process.exit(code ?? 1));
+if (isInteractiveDrop) {
+  child.stdin.write('yes\n');
+  child.stdin.end();
+}
+
+child.on('error', error => {
+  process.stderr.write(`failed to start dbmate: ${error.message}\n`);
+  process.exit(1);
+});
+
+child.on('exit', (code, signal) => process.exit(signal === null ? (code ?? 1) : 1));

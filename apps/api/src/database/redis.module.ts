@@ -9,7 +9,7 @@ export class RedisService implements OnModuleDestroy {
   readonly subscriber: Redis;
 
   constructor(environment: EnvironmentService) {
-    const options = { maxRetriesPerRequest: null as null, enableReadyCheck: false, lazyConnect: false };
+    const options = { maxRetriesPerRequest: null, enableReadyCheck: false, lazyConnect: false };
     this.client = new Redis(environment.values.REDIS_URL, options);
     this.publisher = new Redis(environment.values.REDIS_URL, options);
     this.subscriber = new Redis(environment.values.REDIS_URL, options);

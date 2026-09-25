@@ -1,4 +1,4 @@
-import { ArgumentsHost, Catch, HttpException, HttpStatus, Logger, type ExceptionFilter } from '@nestjs/common';
+import { ArgumentsHost, Catch, HttpException, Logger, type ExceptionFilter } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { PROBLEM_CONTENT_TYPE, buildProblem, errorCatalog, type ErrorCode, type FieldError } from '@smart-home/contracts';
@@ -56,17 +56,19 @@ export class ProblemDetailsFilter implements ExceptionFilter {
   }
 
   private codeForStatus(status: number): ErrorCode {
-    if (status === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
-    if (status === HttpStatus.UNAUTHORIZED) return 'UNAUTHENTICATED';
-    if (status === HttpStatus.FORBIDDEN) return 'FORBIDDEN';
-    if (status === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
-    if (status === HttpStatus.CONFLICT) return 'CONFLICT';
-    if (status === HttpStatus.UNPROCESSABLE_ENTITY) return 'VALIDATION_FAILED';
-    if (status === HttpStatus.TOO_MANY_REQUESTS) return 'RATE_LIMITED';
-    if (status === HttpStatus.LOCKED) return 'OTP_LOCKED';
-    if (status === HttpStatus.BAD_GATEWAY) return 'ADAPTER_UNAVAILABLE';
+    const byStatus: Record<number, ErrorCode> = {
+      400: 'BAD_REQUEST',
+      401: 'UNAUTHENTICATED',
+      403: 'FORBIDDEN',
+      404: 'NOT_FOUND',
+      409: 'CONFLICT',
+      422: 'VALIDATION_FAILED',
+      423: 'OTP_LOCKED',
+      429: 'RATE_LIMITED',
+      502: 'ADAPTER_UNAVAILABLE'
+    };
     if (status >= 500) return 'INTERNAL_ERROR';
-    return 'BAD_REQUEST';
+    return byStatus[status] ?? 'BAD_REQUEST';
   }
 }
 
