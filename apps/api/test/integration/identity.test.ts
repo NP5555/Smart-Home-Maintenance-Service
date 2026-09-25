@@ -219,6 +219,40 @@ describe('FR-CU-04: refresh rotation, reuse detection and logout', () => {
     expect(liveToken.body.code).toBe('REFRESH_REUSE_DETECTED');
   });
 
+  it('detects reuse of the very first token of a family, not only of rotated ones', async () => {
+    const user = await registerAndVerify(app, 'CUSTOMER');
+    const login = await loginAs(app, user.phoneE164, PASSWORD);
+    const first = refreshCookieOf(login) as string;
+    const second = refreshCookieOf(await callApi(app, '/auth/refresh', withCookie(first))) as string;
+
+    // Replaying the token the login itself issued. It carries no replacement of
+    // its own, so this only works if rotation records the replacement on the row
+    // that was rotated away rather than on the row that replaced it.
+    const replayed = await callApi<{ code: string }>(app, '/auth/refresh', withCookie(first));
+    expect(replayed.status).toBe(401);
+    expect(replayed.body.code).toBe('REFRESH_REUSE_DETECTED');
+
+    const liveToken = await callApi<{ code: string }>(app, '/auth/refresh', withCookie(second));
+    expect(liveToken.status).toBe(401);
+    expect(liveToken.body.code).toBe('REFRESH_REUSE_DETECTED');
+  });
+
+  it('a deliberate logout is not treated as reuse and does not sign out siblings', async () => {
+    const user = await registerAndVerify(app, 'CUSTOMER');
+    const login = await loginAs(app, user.phoneE164, PASSWORD);
+    const loggedOut = refreshCookieOf(login) as string;
+    const sibling = refreshCookieOf(await loginAs(app, user.phoneE164, PASSWORD)) as string;
+
+    expect((await callApi(app, '/auth/logout', withCookie(loggedOut))).status).toBe(204);
+
+    const replay = await callApi<{ code: string }>(app, '/auth/refresh', withCookie(loggedOut));
+    expect(replay.status).toBe(401);
+    expect(replay.body.code).toBe('UNAUTHENTICATED');
+
+    // The other session is a separate family, so it must survive.
+    expect((await callApi(app, '/auth/refresh', withCookie(sibling))).status).toBe(201);
+  });
+
   it('logout revokes the presented token', async () => {
     const user = await registerAndVerify(app, 'CUSTOMER');
     const login = await loginAs(app, user.phoneE164, PASSWORD);

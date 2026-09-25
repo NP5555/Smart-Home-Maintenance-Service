@@ -23,7 +23,7 @@ export class SessionService {
 
   /** Opens a brand new rotation family, as at first sign in. */
   async start(userId: string, meta: SessionMeta): Promise<IssuedSession> {
-    return this.insert(userId, randomUUID(), null, meta);
+    return this.insert(userId, randomUUID(), meta);
   }
 
   /**
@@ -44,12 +44,21 @@ export class SessionService {
     const session = rows[0];
     if (session === undefined) throw new DomainError('UNAUTHENTICATED', 'The refresh token is not valid');
     if (session.revoked_at !== null) {
-      if (session.replaced_by === null) throw new DomainError('UNAUTHENTICATED', 'The refresh token is no longer valid');
+      // `replaced_by` is set only when this token was rotated away, which is
+      // what separates a leak from a deliberate logout or password change.
+      if (session.replaced_by === null && !(await this.familyWasCompromised(session.family_id))) {
+        throw new DomainError('UNAUTHENTICATED', 'The refresh token is no longer valid');
+      }
       await this.revokeFamily(session.family_id);
       throw new DomainError('REFRESH_REUSE_DETECTED', 'This refresh token was already used. Every session in the family has been signed out.');
     }
-    await this.prisma.$queryRaw(Prisma.sql`UPDATE sessions SET revoked_at = now() WHERE id = ${session.id}::uuid`);
-    return { userId: session.user_id, ...(await this.insert(session.user_id, session.family_id, session.id, meta)) };
+    const issued = await this.insert(session.user_id, session.family_id, meta);
+    // The replacement is recorded on the row that was rotated away, not on the
+    // new one. `replaced_by` therefore reads as "this token was replaced by
+    // that one", which is what makes the reuse check above correct for the very
+    // first token of a family and not only for ones that came from a rotation.
+    await this.prisma.$queryRaw(Prisma.sql`UPDATE sessions SET revoked_at = now(), replaced_by = ${issued.sessionId}::uuid WHERE id = ${session.id}::uuid`);
+    return { userId: session.user_id, ...issued };
   }
 
   async revoke(presented: string): Promise<void> {
@@ -61,16 +70,29 @@ export class SessionService {
     return this.prisma.$executeRaw(Prisma.sql`UPDATE sessions SET revoked_at = now() WHERE family_id = ${familyId}::uuid AND revoked_at IS NULL`);
   }
 
+  /**
+   * True when some row in the family was revoked by a rotation rather than on
+   * purpose. A token caught up in the collateral revocation that follows a leak
+   * should keep reporting reuse, so the client keeps telling the user to sign in
+   * again instead of seeing a bare 401 and retrying.
+   */
+  private async familyWasCompromised(familyId: string): Promise<boolean> {
+    const [row] = await this.prisma.$queryRaw<{ present: boolean }[]>(
+      Prisma.sql`SELECT EXISTS (SELECT 1 FROM sessions WHERE family_id = ${familyId}::uuid AND revoked_at IS NOT NULL AND replaced_by IS NOT NULL) AS present`
+    );
+    return row?.present === true;
+  }
+
   /** Used after a password change: FR-CU-04 in SHM-020 requires every other session to die. */
   async revokeAllForUser(userId: string): Promise<number> {
     return this.prisma.$executeRaw(Prisma.sql`UPDATE sessions SET revoked_at = now() WHERE user_id = ${userId}::uuid AND revoked_at IS NULL`);
   }
 
-  private async insert(userId: string, familyId: string, replacedBy: string | null, meta: SessionMeta): Promise<IssuedSession> {
+  private async insert(userId: string, familyId: string, meta: SessionMeta): Promise<IssuedSession> {
     const issued = issueRefreshToken(this.secrets);
     const [row] = await this.prisma.$queryRaw<{ id: string }[]>(
-      Prisma.sql`INSERT INTO sessions(user_id, family_id, refresh_token_hash, user_agent, ip, expires_at, replaced_by)
-                 VALUES (${userId}::uuid, ${familyId}::uuid, ${issued.hash}, ${meta.userAgent ?? null}, ${meta.ip ?? null}::inet, ${issued.expiresAt}, ${replacedBy}::uuid)
+      Prisma.sql`INSERT INTO sessions(user_id, family_id, refresh_token_hash, user_agent, ip, expires_at)
+                 VALUES (${userId}::uuid, ${familyId}::uuid, ${issued.hash}, ${meta.userAgent ?? null}, ${meta.ip ?? null}::inet, ${issued.expiresAt})
                  RETURNING id`
     );
     if (row === undefined) throw new DomainError('INTERNAL_ERROR', 'The session could not be created');

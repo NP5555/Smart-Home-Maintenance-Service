@@ -14,7 +14,13 @@ import { appendOutboxEvent } from './audit.service.js';
 const providerSchema = z.enum(['mock']);
 const eventSchema = z.object({ eventId: z.string().min(1).max(200), paymentId: z.string().uuid(), type: z.string().min(1).max(100), occurredAt: z.string().min(1), payload: z.record(z.unknown()) });
 
-export type WebhookIngestResult = { accepted: true; duplicate: boolean; eventId: string };
+export type WebhookIngestResult = {
+  accepted: true;
+  duplicate: boolean;
+  eventId: string;
+  /** False when the event names a payment we have no record of. */
+  matchedPayment: boolean;
+};
 
 @ApiTags('webhooks')
 @Controller('webhooks/payments')
@@ -43,17 +49,34 @@ export class PaymentWebhookController {
       throw new DomainError('UNAUTHENTICATED', error instanceof Error ? error.message : 'Webhook signature verification failed');
     }
     const event = parseWith(eventSchema, parsed);
-    const inserted = await this.prisma.$transaction(async tx => {
-      const rows = await tx.$queryRaw<{ id: bigint }[]>(
-        Prisma.sql`INSERT INTO payment_events(gateway, gateway_event_id, payment_id, type, payload, occurred_at)
-          VALUES (${provider}, ${event.eventId}, ${event.paymentId}::uuid, ${event.type}, ${JSON.stringify(event.payload)}::jsonb, ${event.occurredAt}::timestamptz)
+
+    const outcome = await this.prisma.$transaction(async tx => {
+      // `payment_events.payment_id` is nullable on purpose: a gateway can
+      // legitimately deliver an event for a payment this instance has no record
+      // of, for example after a restore or a replay from a long-dead queue. The
+      // event is still stored so the dedupe key is honoured, and rejecting it
+      // would make the gateway retry forever.
+      const [payment] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM payments WHERE id = ${event.paymentId}::uuid`);
+      const paymentId = payment?.id ?? null;
+
+      // received_at is the server clock, which is authoritative; the gateway's
+      // own occurredAt is kept inside the payload rather than trusted.
+      const rows = await tx.$queryRaw<{ id: string }[]>(
+        Prisma.sql`INSERT INTO payment_events(gateway, gateway_event_id, payment_id, type, payload)
+          VALUES (${provider}, ${event.eventId}, ${paymentId}::uuid, ${event.type}, ${JSON.stringify({ ...event.payload, gatewayOccurredAt: event.occurredAt })}::jsonb)
           ON CONFLICT (gateway, gateway_event_id) DO NOTHING
           RETURNING id`
       );
-      if (rows.length === 0) return false;
-      await appendOutboxEvent(tx, { aggregate: 'payment', aggregateId: event.paymentId, type: 'payment.webhook.received', payload: { eventId: event.eventId, type: event.type, paymentId: event.paymentId } });
-      return true;
+      if (rows.length === 0) return { inserted: false, matched: paymentId !== null };
+
+      // Only a matched payment has downstream work; an orphan event is recorded
+      // for audit and left for reconciliation.
+      if (paymentId !== null) {
+        await appendOutboxEvent(tx, { aggregate: 'payment', aggregateId: paymentId, type: 'payment.webhook.received', payload: { eventId: event.eventId, type: event.type, paymentId } });
+      }
+      return { inserted: true, matched: paymentId !== null };
     });
-    return { accepted: true, duplicate: !inserted, eventId: event.eventId };
+
+    return { accepted: true, duplicate: !outcome.inserted, eventId: event.eventId, matchedPayment: outcome.matched };
   }
 }
