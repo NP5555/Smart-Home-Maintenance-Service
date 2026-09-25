@@ -30,8 +30,10 @@
     "db:pull": "npm run db:pull --workspace @smart-home/db",
     "db:reset": "npm run db:reset --workspace @smart-home/db",
     "db:seed": "npm run db:seed --workspace @smart-home/db",
-    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
-    "infra:down": "docker compose -f infra/docker-compose.yml down -v"
+    "infra:up": "docker compose --env-file .env -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose --env-file .env -f infra/docker-compose.yml down -v",
+    "infra:objects": "docker compose --env-file .env -f infra/docker-compose.yml --profile objects up -d",
+    "infra:ps": "docker compose --env-file .env -f infra/docker-compose.yml ps"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

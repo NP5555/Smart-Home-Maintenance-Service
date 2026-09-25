@@ -1,4 +1,4 @@
-import { Global, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
+import { Global, Inject, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { EnvironmentService } from '../config/environment.service.js';
 
@@ -8,7 +8,7 @@ export class RedisService implements OnModuleDestroy {
   readonly publisher: Redis;
   readonly subscriber: Redis;
 
-  constructor(environment: EnvironmentService) {
+  constructor(@Inject(EnvironmentService) environment: EnvironmentService) {
     const options = { maxRetriesPerRequest: null, enableReadyCheck: false, lazyConnect: false };
     this.client = new Redis(environment.values.REDIS_URL, options);
     this.publisher = new Redis(environment.values.REDIS_URL, options);

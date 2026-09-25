@@ -5,8 +5,14 @@ import { parseEnvironment, type Environment } from './environment.schema.js';
 export class EnvironmentService {
   readonly values: Environment;
 
-  constructor(source: NodeJS.ProcessEnv = process.env) {
-    this.values = parseEnvironment(source);
+  constructor() {
+    this.values = parseEnvironment(process.env);
+  }
+
+  static from(source: NodeJS.ProcessEnv): EnvironmentService {
+    const service = Object.create(EnvironmentService.prototype) as EnvironmentService;
+    Object.defineProperty(service, 'values', { value: parseEnvironment(source), enumerable: true });
+    return service;
   }
 
   get isProduction(): boolean {

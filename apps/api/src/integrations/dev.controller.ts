@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Query } from '@nestjs/common';
+import { Controller, Get, Inject, Param, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { DomainError } from '../common/domain-error.js';
@@ -14,9 +14,9 @@ const listQuerySchema = z.object({ limit: z.coerce.number().int().min(1).max(200
 @Controller('dev')
 export class DevController {
   constructor(
-    private readonly environment: EnvironmentService,
-    private readonly inbox: DevInbox,
-    private readonly storage: MockObjectStorage
+    @Inject(EnvironmentService) private readonly environment: EnvironmentService,
+    @Inject(DevInbox) private readonly inbox: DevInbox,
+    @Inject(MockObjectStorage) private readonly storage: MockObjectStorage
   ) {}
 
   @Get('inbox')

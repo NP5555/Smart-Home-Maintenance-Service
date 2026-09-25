@@ -1,4 +1,4 @@
-import { Injectable, OnApplicationShutdown, type OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, OnApplicationShutdown, type OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { EnvironmentService } from '../config/environment.service.js';
 import { PrismaService } from '../database/prisma.service.js';
@@ -19,9 +19,9 @@ export class OutboxDispatcher implements OnModuleInit, OnApplicationShutdown {
   private readonly pollIntervalMs: number;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly queues: QueueRegistry,
-    environment: EnvironmentService
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(QueueRegistry) private readonly queues: QueueRegistry,
+    @Inject(EnvironmentService) environment: EnvironmentService
   ) {
     this.pollIntervalMs = environment.values.OUTBOX_POLL_INTERVAL_MS;
   }

@@ -8,9 +8,9 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import cookie from '@fastify/cookie';
 import helmet from '@fastify/helmet';
 import rateLimit from '@fastify/rate-limit';
-import rawBody from 'fastify-raw-body';
 import { AppModule } from './app.module.js';
 import { EnvironmentService } from './config/environment.service.js';
+import { rawBodyPlugin } from './common/raw-body.js';
 import { buildLoggerOptions, resolveRequestId } from './logger.js';
 import { SettingsService } from './platform/settings.service.js';
 
@@ -30,13 +30,13 @@ export const bootstrap = async (): Promise<NestFastifyApplication> => {
   const environment = new EnvironmentService();
   const app = await NestFactory.create<NestFastifyApplication>(AppModule, createHttpAdapter(environment.values.LOG_LEVEL, environment.isProduction), { bufferLogs: true });
 
-  await app.register(rawBody, { field: 'rawBody', global: false, encoding: false, runFirst: true });
+  await app.register(rawBodyPlugin);
   await app.register(helmet, { global: true, contentSecurityPolicy: false });
   await app.register(cookie, { secret: environment.values.CSRF_SECRET });
   await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute', keyGenerator: request => request.ip });
 
   app.enableCors({ origin: environment.values.CORS_ORIGINS, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
-  app.setGlobalPrefix(GLOBAL_PREFIX, { exclude: [{ path: '', method: RequestMethod.GET }, { path: 'health/(.*)', method: RequestMethod.GET }, { path: 'api/docs/(.*)', method: RequestMethod.GET }] });
+  app.setGlobalPrefix(GLOBAL_PREFIX, { exclude: [{ path: '', method: RequestMethod.GET }, { path: 'health/{*path}', method: RequestMethod.GET }, { path: 'api/docs/{*path}', method: RequestMethod.GET }] });
   app.enableShutdownHooks();
 
   const openApi = new DocumentBuilder()

@@ -1,4 +1,4 @@
-import { CallHandler, ExecutionContext, Injectable, NestInterceptor } from '@nestjs/common';
+import { CallHandler, ExecutionContext, Inject, Injectable, NestInterceptor } from '@nestjs/common';
 import { firstValueFrom, from, type Observable } from 'rxjs';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { DomainError } from './domain-error.js';
@@ -20,7 +20,7 @@ export const shouldBeIdempotent = (request: FastifyRequest): boolean => IDEMPOTE
 
 @Injectable()
 export class IdempotencyInterceptor implements NestInterceptor {
-  constructor(private readonly idempotency: IdempotencyService) {}
+  constructor(@Inject(IdempotencyService) private readonly idempotency: IdempotencyService) {}
 
   intercept(context: ExecutionContext, next: CallHandler): Observable<unknown> {
     if (context.getType() !== 'http') return next.handle();

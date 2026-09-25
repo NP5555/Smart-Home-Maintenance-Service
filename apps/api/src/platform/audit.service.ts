@@ -1,5 +1,5 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { type ModuleRef } from '@nestjs/core';
+import { Inject, Injectable, Optional } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import type { ActorRole } from '../common/policy.js';
 import { PrismaService } from '../database/prisma.service.js';
@@ -26,8 +26,8 @@ export type DatabaseWriter = PrismaService | Prisma.TransactionClient;
 @Injectable()
 export class AuditService {
   constructor(
-    private readonly prisma: PrismaService,
-    @Optional() private readonly moduleRef?: ModuleRef
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Optional() @Inject(ModuleRef) private readonly moduleRef?: ModuleRef
   ) {}
 
   async append(entry: AuditEntry, client: DatabaseWriter = this.prisma): Promise<void> {

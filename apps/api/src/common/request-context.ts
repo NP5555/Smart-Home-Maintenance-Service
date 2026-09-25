@@ -11,6 +11,7 @@ export type RequestContextValue = {
 declare module 'fastify' {
   interface FastifyRequest {
     requestContext?: RequestContextValue;
+    rawBody?: Buffer | undefined;
   }
 }
 

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { RedisService } from '../database/redis.module.js';
@@ -16,8 +16,8 @@ export class SettingsService {
   private subscribed = false;
 
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RedisService) private readonly redis: RedisService
   ) {}
 
   async start(): Promise<void> {

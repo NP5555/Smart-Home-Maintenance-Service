@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
@@ -21,7 +21,7 @@ const settingKeySchema = z.string().trim().min(1).max(200);
 @ApiBearerAuth()
 @Controller('admin/settings')
 export class SettingsController {
-  constructor(private readonly settings: SettingsService) {}
+  constructor(@Inject(SettingsService) private readonly settings: SettingsService) {}
 
   @Get()
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })

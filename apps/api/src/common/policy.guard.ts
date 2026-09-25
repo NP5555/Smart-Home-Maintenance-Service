@@ -9,7 +9,7 @@ export const POLICY_REQUIRED_MESSAGE = 'Route is missing a @Policy() or @Public(
 @Injectable()
 export class PolicyGuard implements CanActivate {
   constructor(
-    private readonly reflector: Reflector,
+    @Inject(Reflector) private readonly reflector: Reflector,
     @Inject(ACCESS_TOKEN_VERIFIER) private readonly tokens: AccessTokenVerifier
   ) {}
 

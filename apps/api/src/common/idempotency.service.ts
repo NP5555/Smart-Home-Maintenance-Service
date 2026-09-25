@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Global, Inject, Injectable, Module } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { DomainError } from './domain-error.js';
@@ -39,7 +39,7 @@ export const abandonIdempotentOperation = async (prisma: PrismaService, operatio
 
 @Injectable()
 export class IdempotencyService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(@Inject(PrismaService) private readonly prisma: PrismaService) {}
 
   begin(operation: IdempotentOperation): Promise<IdempotencyRecord> {
     return beginIdempotentOperation(this.prisma, operation);
@@ -53,3 +53,10 @@ export class IdempotencyService {
     return abandonIdempotentOperation(this.prisma, operation);
   }
 }
+
+@Global()
+@Module({
+  providers: [IdempotencyService],
+  exports: [IdempotencyService]
+})
+export class IdempotencyModule {}

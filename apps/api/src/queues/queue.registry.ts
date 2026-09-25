@@ -1,4 +1,4 @@
-import { Global, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
+import { Global, Inject, Injectable, Module, OnModuleDestroy } from '@nestjs/common';
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import { RedisService } from '../database/redis.module.js';
 
@@ -22,7 +22,7 @@ export class QueueRegistry implements OnModuleDestroy {
   private readonly events = new Map<QueueName, QueueEvents>();
   private readonly handlers = new Map<string, QueueHandler>();
 
-  constructor(private readonly redis: RedisService) {
+  constructor(@Inject(RedisService) private readonly redis: RedisService) {
     for (const name of QUEUE_NAMES) this.queues.set(name, new Queue(name, { connection: this.redis.duplicate() }));
   }
 

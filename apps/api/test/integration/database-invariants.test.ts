@@ -51,13 +51,36 @@ describe('DB-level invariants from 04_schema.sql', () => {
   });
 
   it('NFR-DB-01: audit_log is insert-only', async () => {
-    await expect(prisma.$executeRawUnsafe(`UPDATE audit_log SET action = 'tampered' WHERE id = 1`)).rejects.toThrow();
-    await expect(prisma.$executeRawUnsafe(`DELETE FROM audit_log WHERE id = 1`)).rejects.toThrow();
+    const inserted = await prisma.$queryRaw<{ id: bigint }[]>(
+      Prisma.sql`INSERT INTO audit_log(actor_role, action, entity_type, entity_id) VALUES ('SYSTEM', 'test.seed', 'TEST', 'audit-insert-only') RETURNING id`
+    );
+    const id = inserted[0]?.id;
+    expect(id).toBeDefined();
+    await expect(prisma.$executeRaw(Prisma.sql`UPDATE audit_log SET action = 'tampered' WHERE id = ${id}::bigint`)).rejects.toThrow();
+    await expect(prisma.$executeRaw(Prisma.sql`DELETE FROM audit_log WHERE id = ${id}::bigint`)).rejects.toThrow();
+    const survivors = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT count(*)::bigint AS count FROM audit_log WHERE id = ${id}::bigint`);
+    expect(Number(survivors[0]?.count ?? 0n)).toBe(1);
   });
 
   it('NFR-DB-02: ledger_entries are insert-only', async () => {
-    await expect(prisma.$executeRawUnsafe(`UPDATE ledger_entries SET amount_paisa = 1 WHERE id = 1`)).rejects.toThrow();
-    await expect(prisma.$executeRawUnsafe(`DELETE FROM ledger_entries WHERE id = 1`)).rejects.toThrow();
+    const [account] = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM ledger_accounts LIMIT 1`);
+    if (account === undefined) return;
+    const entryId = await prisma.$transaction(async tx => {
+      const [created] = await tx.$queryRaw<{ id: string }[]>(Prisma.sql`INSERT INTO ledger_transactions(tx_type) VALUES ('ADJUSTMENT') RETURNING id`);
+      if (created === undefined) throw new Error('ledger transaction insert returned no id');
+      const [entry] = await tx.$queryRaw<{ id: bigint }[]>(
+        Prisma.sql`INSERT INTO ledger_entries(transaction_id, account_id, direction, amount_paisa) VALUES (${created.id}::uuid, ${account.id}::uuid, 'DEBIT', 100) RETURNING id`
+      );
+      if (entry === undefined) throw new Error('ledger entry insert returned no id');
+      await tx.$executeRaw(
+        Prisma.sql`INSERT INTO ledger_entries(transaction_id, account_id, direction, amount_paisa) VALUES (${created.id}::uuid, ${account.id}::uuid, 'CREDIT', 100)`
+      );
+      return entry.id;
+    });
+    await expect(prisma.$executeRaw(Prisma.sql`UPDATE ledger_entries SET amount_paisa = 1 WHERE id = ${entryId}::bigint`)).rejects.toThrow();
+    await expect(prisma.$executeRaw(Prisma.sql`DELETE FROM ledger_entries WHERE id = ${entryId}::bigint`)).rejects.toThrow();
+    const survivors = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT count(*)::bigint AS count FROM ledger_entries WHERE id = ${entryId}::bigint`);
+    expect(Number(survivors[0]?.count ?? 0n)).toBe(1);
   });
 
   it('NFR-DB-03: users are never physically deleted', async () => {

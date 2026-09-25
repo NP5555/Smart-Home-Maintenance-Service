@@ -1,4 +1,4 @@
-import { Body, Controller, Headers, HttpCode, Param, Post, Req } from '@nestjs/common';
+import { Body, Controller, Headers, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
 import type { FastifyRequest } from 'fastify';
@@ -7,10 +7,9 @@ import { DomainError } from '../common/domain-error.js';
 import { Public } from '../common/policy.js';
 import { parseWith } from '../common/validation.js';
 import { PrismaService } from '../database/prisma.service.js';
-import { MockPaymentGateway } from '../integrations/mocks.js';
+import { PAYMENT_GATEWAY } from '../integrations/integrations.module.js';
+import type { ParsedPaymentEvent, PaymentGatewayPort } from '../integrations/ports.js';
 import { appendOutboxEvent } from './audit.service.js';
-
-type SignedRequest = FastifyRequest & { rawBody?: Buffer | undefined };
 
 const providerSchema = z.enum(['mock']);
 const eventSchema = z.object({ eventId: z.string().min(1).max(200), paymentId: z.string().uuid(), type: z.string().min(1).max(100), occurredAt: z.string().min(1), payload: z.record(z.unknown()) });
@@ -21,8 +20,8 @@ export type WebhookIngestResult = { accepted: true; duplicate: boolean; eventId:
 @Controller('webhooks/payments')
 export class PaymentWebhookController {
   constructor(
-    private readonly gateway: MockPaymentGateway,
-    private readonly prisma: PrismaService
+    @Inject(PAYMENT_GATEWAY) private readonly gateway: PaymentGatewayPort,
+    @Inject(PrismaService) private readonly prisma: PrismaService
   ) {}
 
   @Post(':provider')
@@ -30,14 +29,14 @@ export class PaymentWebhookController {
   @Public()
   @ApiOperation({ summary: 'Signed gateway webhook; deduplicated by (gateway, gateway_event_id)' })
   async receive(
-    @Req() request: SignedRequest,
+    @Req() request: FastifyRequest,
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: unknown,
     @Param('provider') rawProvider: string
   ): Promise<WebhookIngestResult> {
     const { provider } = parseWith(z.object({ provider: providerSchema }).strict(), { provider: rawProvider });
     const rawBody = (request.rawBody ?? Buffer.from(JSON.stringify(body))).toString('utf8');
-    let parsed: ReturnType<MockPaymentGateway['verifyWebhook']>;
+    let parsed: ParsedPaymentEvent;
     try {
       parsed = this.gateway.verifyWebhook(headers, rawBody);
     } catch (error) {

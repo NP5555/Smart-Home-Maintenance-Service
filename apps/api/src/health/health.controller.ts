@@ -32,11 +32,11 @@ const worst = (checks: HealthCheckResult[]): HealthState => (checks.some(check =
 @Controller()
 export class HealthController {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly redis: RedisService,
-    private readonly queues: QueueRegistry,
-    private readonly settings: SettingsService,
-    private readonly environment: EnvironmentService,
+    @Inject(PrismaService) private readonly prisma: PrismaService,
+    @Inject(RedisService) private readonly redis: RedisService,
+    @Inject(QueueRegistry) private readonly queues: QueueRegistry,
+    @Inject(SettingsService) private readonly settings: SettingsService,
+    @Inject(EnvironmentService) private readonly environment: EnvironmentService,
     @Inject(OBJECT_STORAGE) private readonly storage: ObjectStoragePort
   ) {}
 
