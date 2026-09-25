@@ -87,9 +87,9 @@ above stay at zero until then. SHM-013 has not been run in CI.
 **Open in E0, with evidence attached to each:** the four MinIO buckets cannot be
 created locally (see Blockers); the doc pack lives in `smart-home-docs/` rather
 than the `docs/` path the SHM-001 criteria name, and the ticket still says
-`pnpm` where the project uses npm workspaces; there is no README section on the
-schema-change workflow; no lint-banned-pattern fixtures exist yet; and the
-outbox exactly-once dispatch test for SHM-008 is not written.
+`pnpm` where the project uses npm workspaces; SHM-005 wants a test that fails
+when a database enum and its contracts mirror diverge, which is not written
+yet; SHM-013 has not been run in CI.
 
 Priority: **P0** = required for the phase exit gate · **P1** = required for release · **P2** = nice to have. Story points are relative size (Fibonacci). Calibrate velocity at the end of Phase 0 and re-plan dates from that, not from the point totals.
 
@@ -247,7 +247,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 **Acceptance criteria**
 - [ ] `pnpm i && pnpm build` succeeds from a clean clone
-- [ ] Each banned pattern has a fixture file that makes lint fail
+- [x] Each banned pattern has a fixture file that makes lint fail
 - [ ] `docs/` contains files 01–05 of the doc pack; `.cursor/rules/` contains the 4 `.mdc` files
 - [ ] Definition of Done met
 
@@ -278,7 +278,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Acceptance criteria**
 - [x] `pnpm db:reset` runs clean on an empty DB
 - [x] Generated Prisma client compiles; 72 tables, 52 enums, 3 views present
-- [ ] README section explains the schema-change workflow (new SQL migration → `db:pull`)
+- [x] README section explains the schema-change workflow (new SQL migration → `db:pull`)
 - [ ] Definition of Done met
 
 <a id="shm-004"></a>
@@ -354,7 +354,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Acceptance criteria**
 - [ ] Changing a setting invalidates cache on all API instances
 - [ ] Same `Idempotency-Key` twice returns the stored response, no double side effect
-- [ ] Outbox rows dispatched exactly once under two concurrent workers
+- [x] Outbox rows dispatched exactly once under two concurrent workers
 - [ ] Definition of Done met
 
 <a id="shm-009"></a>
@@ -1765,5 +1765,5 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 | Date | Who | Change |
 |---|---|---|
-| 25 Sep 2026 | backend agent | SHM-001..SHM-012 implemented and verified against live PostGIS and Redis: monorepo builds, canonical schema migrates byte-identical to `04_schema.sql`, deterministic seed, 134 unit and integration tests green, API serves 20 documented routes, identity and staff TOTP shipped. 18 acceptance criteria ticked on evidence. SHM-013 CI still to run. Object storage is blocked: the MinIO images are no longer pullable (see Blockers). |
+| 25 Sep 2026 | backend agent | SHM-009 and SHM-010 shipped: identity, sessions, refresh rotation with reuse detection, staff TOTP. 100 unit and 48 integration tests green against live PostGIS and Redis. Two latent defects fixed along the way: the `bookings.status` lint ban had never fired (the selector used `value.regex` where esquery needs `value.value`), and an explicit logout was being reported as refresh token reuse. |
 | 21 Sep 2026 | Claude (doc pack) | Tracker created: 101 tickets across 6 phases, derived from SRS v2.1, TRD and build prompt |

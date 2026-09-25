@@ -7,21 +7,55 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 
 const bookingStatuses = 'PENDING_PAYMENT|ABANDONED|REQUESTED|UNFULFILLED|ACCEPTED|SCHEDULED|EN_ROUTE|IN_PROGRESS|QUOTE_REVISION|WORK_COMPLETED|AWAITING_VERIFICATION|REWORK_REQUIRED|VERIFIED|AUTO_RELEASED|DISPUTED|PAYMENT_RELEASED|PARTIALLY_REFUNDED|REFUNDED|CANCELLED_CUSTOMER|CANCELLED_PROVIDER|NO_SHOW|CLOSED';
 
+/**
+ * The write methods Prisma exposes, reached either bare (`update`) or through a
+ * model handle (`prisma.booking.update`). Both shapes appear in real code, so
+ * both have to be covered or the ban can be sidestepped by qualification.
+ * `:has()` identifies the call; the ObjectExpression is a child of the call, not
+ * of the Identifier, so the two cannot simply be chained.
+ */
+const prismaWriteCallee = 'CallExpression[callee.name=/^(update|updateMany|upsert|create|createMany)$/]';
+const memberWriteCallee = 'CallExpression:has(MemberExpression > Identifier[name=/^(update|updateMany|upsert|create|createMany)$/])';
+/**
+ * The literal's own value lives at `value.value`; `[value.regex=...]` matches
+ * nothing because `value` is the Literal node, not its string. Getting this
+ * wrong silently disables the ban, so the lint-fixtures test pins it.
+ */
+const statusValue = `[key.name='status'][value.value=/^('|")?(${bookingStatuses})('|")?$/]`;
+
+const statusWriteMessage = 'bookings.status is written only by BookingStateService.apply() inside a transaction.';
+const moneyMessage = 'Money is bigint paisa. Use the helpers from @smart-home/domain, never Number().';
+
 const rules = [
   'error',
-  {
-    selector: `CallExpression[callee.name=/^(update|updateMany|upsert|create|createMany)$/] > ObjectExpression > Property[key.name='status'][value.regex=/^('|")?(${bookingStatuses})('|")?$/]`,
-    message: 'bookings.status is written only by BookingStateService.apply() inside a transaction.'
-  },
-  {
-    selector: 'CallExpression[callee.name="Number"][arguments.0.type="Identifier"][arguments.0.name=/(Paisa|Amount|Price|Fee|Commission|Balance|Debt|Credit|Wallet|Escrow)/]',
-    message: 'Money is bigint paisa. Use the helpers from @smart-home/domain, never Number().'
-  }
+  // `update({ status })` and `update({ data: { status } })` are both real shapes.
+  { selector: `${prismaWriteCallee} > ObjectExpression > Property${statusValue}`, message: statusWriteMessage },
+  { selector: `${prismaWriteCallee} > ObjectExpression > Property[key.name='data'] > ObjectExpression > Property${statusValue}`, message: statusWriteMessage },
+  { selector: `${memberWriteCallee} > ObjectExpression > Property${statusValue}`, message: statusWriteMessage },
+  { selector: `${memberWriteCallee} > ObjectExpression > Property[key.name='data'] > ObjectExpression > Property${statusValue}`, message: statusWriteMessage },
+  // Case insensitive: the risk is a paisa value reaching Number(), whatever the
+  // variable happens to be called.
+  { selector: 'CallExpression[callee.name="Number"][arguments.0.type="Identifier"][arguments.0.name=/(paisa|amount|price|fee|commission|balance|debt|credit|wallet|escrow|refund|payout|total)/i]', message: moneyMessage }
 ];
 
 export default tseslint.config(
   {
-    ignores: ['**/dist/**', '**/node_modules/**', '**/.turbo/**', '**/coverage/**', '**/migrations/**', '**/generated/**', '**/*.d.ts', 'smart-home-docs/**']
+    // The banned-pattern fixtures are deliberately invalid, so lint must never
+    // walk them during an ordinary run. Both patterns are needed: this config is
+    // loaded from the repo root and from packages/config, which changes the base
+    // path the patterns resolve against.
+    ignores: [
+      '**/dist/**',
+      '**/node_modules/**',
+      '**/.turbo/**',
+      '**/coverage/**',
+      '**/migrations/**',
+      '**/generated/**',
+      '**/*.d.ts',
+      'smart-home-docs/**',
+      'packages/config/fixtures/**',
+      'fixtures/**'
+    ]
   },
   eslint.configs.recommended,
   ...tseslint.configs.recommendedTypeChecked,
