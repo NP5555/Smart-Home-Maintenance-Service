@@ -9,6 +9,8 @@
     "./prettier": "./prettier.config.js"
   },
   "scripts": {
+    "build": "echo \"@smart-home/config is config only, nothing to build\"",
+    "lint": "eslint eslint.config.js prettier.config.js test",
     "test": "vitest run"
   },
   "devDependencies": {

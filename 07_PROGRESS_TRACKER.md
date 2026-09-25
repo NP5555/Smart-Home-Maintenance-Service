@@ -87,9 +87,13 @@ above stay at zero until then. SHM-013 has not been run in CI.
 **Open in E0, with evidence attached to each:** the four MinIO buckets cannot be
 created locally (see Blockers); the doc pack lives in `smart-home-docs/` rather
 than the `docs/` path the SHM-001 criteria name, and the ticket still says
-`pnpm` where the project uses npm workspaces; SHM-005 wants a test that fails
-when a database enum and its contracts mirror diverge, which is not written
-yet; SHM-013 has not been run in CI.
+`pnpm` where the project uses npm workspaces; SHM-013 has not been run in CI.
+
+Verification as of this update, all on this machine: lint, typecheck and build
+clean in every package; 102 unit tests and 48 integration tests green against
+live PostGIS and Redis; the API and the worker both boot; `/health/ready`
+reports database, redis, queues, settings and storage all ok; 21 routes are
+served and present in the OpenAPI document.
 
 Priority: **P0** = required for the phase exit gate · **P1** = required for release · **P2** = nice to have. Story points are relative size (Fibonacci). Calibrate velocity at the end of Phase 0 and re-plan dates from that, not from the point totals.
 
@@ -306,7 +310,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** Enums mirrored from schema, error-code catalogue (`ILLEGAL_TRANSITION`, `SLOT_TAKEN`, `OTP_INVALID`, `CONFLICT_OF_INTEREST`, `DEBT_BLOCKED` …), `Money` (integer paisa + `PKR`), cursor pagination, problem+json schema.
 
 **Acceptance criteria**
-- [ ] A test fails if a DB enum and its contracts mirror diverge
+- [x] A test fails if a DB enum and its contracts mirror diverge
 - [ ] FE and BE both import from `@shm/contracts`; no duplicated enum strings in apps
 - [ ] Definition of Done met
 

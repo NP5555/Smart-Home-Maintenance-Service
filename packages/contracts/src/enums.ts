@@ -1,7 +1,12 @@
 import { z } from 'zod';
 
-const enumFrom = <T extends string>(sqlType: string, values: readonly T[]) => ({
-  sqlType,
+/**
+ * `sqlType` is the Postgres enum this mirror tracks. It is omitted for values
+ * the schema enforces with a CHECK constraint rather than a `CREATE TYPE`, so
+ * the enum-drift test only ever compares against real enum types.
+ */
+const enumFrom = <T extends string>(sqlType: string | undefined, values: readonly T[]) => ({
+  ...(sqlType === undefined ? {} : { sqlType }),
   values,
   schema: z.enum(values as [T, ...T[]]),
   options: values
@@ -132,7 +137,8 @@ export const NotificationChannel = enumFrom('notification_channel', ['SMS', 'EMA
 export const NotificationStatus = enumFrom('notification_status', ['QUEUED', 'SENT', 'DELIVERED', 'FAILED', 'READ'] as const);
 export const ReportStatus = enumFrom('report_status', ['QUEUED', 'RUNNING', 'DONE', 'FAILED'] as const);
 
-export const Locale = enumFrom('locale', ['en', 'ur'] as const);
+// `users.locale` is `text` with `CHECK (locale IN ('en','ur'))`, not a `CREATE TYPE`.
+export const Locale = enumFrom(undefined, ['en', 'ur'] as const);
 
 export type UserStatusValue = (typeof UserStatus.values)[number];
 export type ProviderStatusValue = (typeof ProviderStatus.values)[number];
