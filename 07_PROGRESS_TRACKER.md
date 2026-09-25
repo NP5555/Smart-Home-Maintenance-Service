@@ -7,7 +7,7 @@
 | Project key | `SHM` |
 | Baseline docs | SRS v2.1 · TRD · ERD · schema.sql · Cursor build prompt |
 | Tracker created | 21 Sep 2026 |
-| Last updated | 25 Sep 2026 - *update on every change* |
+| Last updated | 26 Sep 2026 - *update on every change* |
 | Product owner | Muhammad Hamza Kundi |
 | BE lead | backend agent |
 | FE lead | _name_ |
@@ -90,10 +90,42 @@ than the `docs/` path the SHM-001 criteria name, and the ticket still says
 `pnpm` where the project uses npm workspaces; SHM-013 has not been run in CI.
 
 Verification as of this update, all on this machine: lint, typecheck and build
-clean in every package; 102 unit tests and 48 integration tests green against
-live PostGIS and Redis; the API and the worker both boot; `/health/ready`
-reports database, redis, queues, settings and storage all ok; 21 routes are
-served and present in the OpenAPI document.
+clean in every package; 64 unit tests and 116 integration tests green against
+live PostGIS and Redis; the API boots and `/health/ready` reports database,
+redis, queues, settings and storage all ok. Five new modules exist since the
+last update — catalogue (SHM-019), customer addresses (part of SHM-020),
+provider profile/availability/time-off/service-areas and approval (part of
+SHM-021 and SHM-023), and search (part of SHM-035), plus a small unticketed
+`places` module (cities/areas) that address creation and provider location
+both depend on. Every endpoint was exercised twice: once through the
+integration suite, and once as a live HTTP walkthrough against the running
+dev server using the exact example payloads now shown in Swagger — register
+a customer, register a provider, build out their profile/availability/areas/
+price, have an admin approve the offer and the account, and have search
+actually surface that provider by real PostGIS distance. None of these
+tickets are complete against their originally written acceptance criteria
+(see §5) — each detail card below records exactly what is built and tested
+versus what is still open, rather than being marked done on a partial match.
+
+**M5 (booking) build in progress, same session:** a design spec
+(`docs/superpowers/specs/2026-09-26-m5-booking-design.md`) and implementation
+plan (`docs/superpowers/plans/2026-09-26-m5-booking-plan.md`) were written and
+approved, and execution has started task-by-task with a fresh reviewer per
+task (no git repository exists in this project, so review packages are full
+file contents rather than diffs, and there is no worktree/branch/commit
+history for this work — see the plan's Global Constraints and the execution
+ledger at `.superpowers/sdd/2026-09-26-m5-booking-plan/progress.md` for the
+full detail). So far: the pure state-transition table (`packages/domain`,
+task 1) and booking creation (`POST /bookings`, task 2) are both implemented
+and independently reviewed clean, including one real fix round on task 2
+(the create write sequence wasn't transactional — fixed, re-reviewed clean).
+Booking read/list (`GET /bookings/:id`, `GET /bookings`, task 3) is
+implemented and self-tested by its implementer (9/9 passing) but its task
+review was interrupted mid-run and has not yet completed — treat it as
+unreviewed until that finishes. Tasks 4-12 (state-service foundation,
+accept/decline, cancel, reschedule, arrival OTP, no-show, checklist, quote
+revisions, completion, and the final full-suite verification pass) have not
+started.
 
 Priority: **P0** = required for the phase exit gate · **P1** = required for release · **P2** = nice to have. Story points are relative size (Fibonacci). Calibrate velocity at the end of Phase 0 and re-plan dates from that, not from the point totals.
 
@@ -128,11 +160,11 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-019](#shm-019) | BE | Story | P0 | 5 | Catalogue API (admin CRUD + public read) | SHM-008, SHM-010 | backend agent | TODO | — |
-| [SHM-020](#shm-020) | BE | Story | P0 | 5 | Customer profile, addresses, favourites, deactivate | SHM-009 | backend agent | TODO | — |
-| [SHM-021](#shm-021) | BE | Story | P0 | 8 | Provider onboarding API | SHM-009, SHM-019 | backend agent | TODO | — |
+| [SHM-019](#shm-019) | BE | Story | P0 | 5 | Catalogue API (admin CRUD + public read) | SHM-008, SHM-010 | backend agent | IN PROGRESS | — |
+| [SHM-020](#shm-020) | BE | Story | P0 | 5 | Customer profile, addresses, favourites, deactivate | SHM-009 | backend agent | IN PROGRESS | — |
+| [SHM-021](#shm-021) | BE | Story | P0 | 8 | Provider onboarding API | SHM-009, SHM-019 | backend agent | IN PROGRESS | — |
 | [SHM-022](#shm-022) | BE | Story | P0 | 5 | Provider documents & CNIC protection | SHM-021, SHM-011 | backend agent | TODO | — |
-| [SHM-023](#shm-023) | BE | Story | P0 | 5 | Admin approval workflow | SHM-022 | backend agent | TODO | — |
+| [SHM-023](#shm-023) | BE | Story | P0 | 5 | Admin approval workflow | SHM-022 | backend agent | IN PROGRESS | — |
 | [SHM-024](#shm-024) | BE | Story | P1 | 5 | Admin management: users, roles, settings, conflicts | SHM-010, SHM-008 | backend agent | TODO | — |
 | [SHM-025](#shm-025) | BE | Story | P0 | 5 | Slot generator + slots endpoint | SHM-021, SHM-006 | backend agent | TODO | — |
 | [SHM-026](#shm-026) | FE | Story | P0 | 5 | Public catalogue pages (SSR) | SHM-017, SHM-019 | — | TODO | — |
@@ -147,11 +179,11 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-033](#shm-033) | BE | Story | P0 | 8 | Booking state machine (domain) T1–T26 | SHM-006, SHM-005 | backend agent | TODO | — |
+| [SHM-033](#shm-033) | BE | Story | P0 | 8 | Booking state machine (domain) T1–T26 | SHM-006, SHM-005 | backend agent | IN PROGRESS | — |
 | [SHM-034](#shm-034) | BE | Story | P0 | 5 | `BookingStateService.apply()` | SHM-033, SHM-008 | backend agent | TODO | — |
-| [SHM-035](#shm-035) | BE | Story | P0 | 8 | Search & ranking API | SHM-025, SHM-020 | backend agent | TODO | — |
+| [SHM-035](#shm-035) | BE | Story | P0 | 8 | Search & ranking API | SHM-025, SHM-020 | backend agent | IN PROGRESS | — |
 | [SHM-036](#shm-036) | BE | Story | P0 | 3 | Quote endpoint | SHM-019, SHM-020 | backend agent | TODO | — |
-| [SHM-037](#shm-037) | BE | Story | P0 | 8 | Checkout: cash + online, webhook, capture, abandonment | SHM-034, SHM-036, SHM-011 | backend agent | TODO | — |
+| [SHM-037](#shm-037) | BE | Story | P0 | 8 | Checkout: cash + online, webhook, capture, abandonment | SHM-034, SHM-036, SHM-011 | backend agent | IN PROGRESS | — |
 | [SHM-038](#shm-038) | BE | Story | P0 | 8 | Offers & auto-assign cascade | SHM-037 | backend agent | TODO | — |
 | [SHM-039](#shm-039) | BE | Story | P0 | 5 | Cancel, reschedule, provider cancel, no-show | SHM-038 | backend agent | TODO | — |
 | [SHM-040](#shm-040) | BE | Story | P1 | 3 | Masked in-booking chat | SHM-034 | backend agent | TODO | — |
@@ -522,10 +554,13 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET /categories` · `GET /services?categoryId` · `/admin/catalogue/*`
 
 **Acceptance criteria**
-- [ ] Public endpoints cached and require no auth
-- [ ] Price band min > max → 422 with field error
-- [ ] Commission resolution order unit-tested (provider > category > global)
+- [x] Public endpoints require no auth (routes are under `GET /catalogue/*`, `@Public()`; not the `/categories` path named above)
+- [x] Price band min > max → 422 with field error (`minPricePaisa <= basePricePaisa <= maxPricePaisa` enforced as a Zod refine)
+- [ ] Public endpoints cached — not built; every request hits Postgres
+- [ ] Commission resolution order unit-tested (provider > category > global) — commission_rules CRUD exists (create/list/end), but nothing yet *reads* a rate by resolving scope precedence; that logic has no caller until booking/invoicing (M8) exists
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026):** `apps/api/src/catalogue/`. Also covers FR-CAT-03/04 (provider expertise + own pricing) via `provider_services` endpoints under `/provider/services` and `/admin/provider-services`, which this ticket's contract didn't originally name. 24 integration tests in `catalogue.test.ts`, all green.
 
 <a id="shm-020"></a>
 #### SHM-020 · Customer profile, addresses, favourites, deactivate
@@ -539,9 +574,11 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET/PATCH /me` · `CRUD /me/addresses` · `POST/DELETE /me/favourites/:providerId` · `POST /me/deactivate`
 
 **Acceptance criteria**
-- [ ] Address outside served areas → 422
-- [ ] After deactivation, name/phone/email anonymised; bookings and ledger intact
+- [~] Address outside a known area → rejected (built as `404 NOT_FOUND` for an unknown/inactive `areaId`, not the `422` this criterion names — same validation intent, different status code convention)
+- [ ] After deactivation, name/phone/email anonymised; bookings and ledger intact — not built
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026):** `apps/api/src/customer/addresses.service.ts` — full CRUD (`GET`/`POST /customer/addresses`, `PATCH`/`DELETE /customer/addresses/:id`), PostGIS point storage, single-default-address enforced in a transaction, soft-archive on delete. **Not built:** `GET/PATCH /me` profile (no separate customer profile exists beyond `/auth/me`), favourites, deactivate. 7 integration tests in `customer-addresses.test.ts`, all green.
 
 <a id="shm-021"></a>
 #### SHM-021 · Provider onboarding API
@@ -555,10 +592,12 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET/PATCH /provider/me` · `PUT /provider/services` · `PUT /provider/areas` · `PUT /provider/availability` · `CRUD /provider/time-off` · `POST /provider/submit`
 
 **Acceptance criteria**
-- [ ] Price outside band → 422
-- [ ] Overlapping time off rejected by DB constraint and surfaced as 409
-- [ ] Submit blocked until all required steps complete (list of missing steps returned)
+- [~] Price outside band → rejected (built as `400 BAD_REQUEST` in `provider/services`, not `422`)
+- [x] Overlapping time off rejected by the DB's `EXCLUDE` constraint, caught by SQLSTATE `23P01` and surfaced as `409 CONFLICT`
+- [ ] Submit blocked until all required steps complete — not built; there is no "submit for approval" step at all, an admin can approve a provider at any time regardless of profile completeness
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026):** `apps/api/src/provider/` — profile (`GET`/`PATCH /provider/profile`), weekly availability (`GET`/`PUT /provider/availability`, replace-all), time off (`GET`/`POST /provider/time-off`, `DELETE .../:id`), service areas (`GET`/`PUT /provider/service-areas`, replace-all). Route paths are `/provider/*`, not `/provider/me/*` as the contract above names them. Payout account and penalty-schedule acceptance are not built (both need modules — M8 payouts, M15 penalties — that don't exist yet). 17 integration tests in `provider-profile.test.ts`, all green.
 
 <a id="shm-022"></a>
 #### SHM-022 · Provider documents & CNIC protection
@@ -589,10 +628,12 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET /admin/providers?status` · `POST /admin/providers/:id/approve|reject` · `POST /admin/documents/:id/verify`
 
 **Acceptance criteria**
-- [ ] Approval blocked unless CNIC is `VERIFIED`
-- [ ] Decision + reason + actor recorded in audit log
-- [ ] Wallet account exists immediately after approval
-- [ ] Definition of Done met
+- [ ] Approval blocked unless CNIC is `VERIFIED` — cannot be built until SHM-022 (documents) exists; today `POST /admin/providers/:id/approve` has no gate at all
+- [ ] Decision + reason + actor recorded in **audit log** — **known gap, not just a naming difference:** `approved_by`/`rejection_reason` are stamped on the `providers` row itself, but unlike every other admin write in this codebase (e.g. `settings.service.ts`'s `set()`), no row is written to `audit_log`. This breaks the project's own Definition of Done ("audit rows written for admin actions") and should be fixed before relying on this endpoint.
+- [ ] Wallet account exists immediately after approval — not built (needs M8 ledger/wallets)
+- [ ] Definition of Done met — **not met**, see audit log gap above
+
+**Evidence (26 Sep 2026):** `apps/api/src/provider/provider-approval.service.ts` — `POST /admin/providers/:id/approve` and `.../reject`, `ADMIN`+TOTP gated. This was added ahead of its listed dependency (SHM-022) because without *some* way to approve a provider, SHM-035 (search) had no way to be tested honestly — a provider can never appear in search while stuck at `PENDING_APPROVAL`. 4 integration tests, all green, but see the audit-log gap noted above before treating this as done.
 
 <a id="shm-024"></a>
 #### SHM-024 · Admin management: users, roles, settings, conflicts
@@ -738,9 +779,11 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** `packages/domain/bookingMachine.ts` defines all 22 states and T1–T26 as data with guards. Generated test matrix asserts every legal transition and rejects every other (status × event) pair; fast-check property test on random event sequences.
 
 **Acceptance criteria**
-- [ ] Matrix covers 100 % of (status × event) pairs
-- [ ] Property test: no sequence reaches an undefined state
+- [ ] Matrix covers 100 % of (status × event) pairs — not met: built as a 10-status/11-event subset (the states this build actually drives, `REQUESTED` through `WORK_COMPLETED` plus the cancel/decline/no-show branches), not the full 22-state/T1–T26 matrix this ticket names. `ACCEPTED`, `PENDING_PAYMENT`, `ABANDONED`, and everything from `AWAITING_VERIFICATION` onward are real DB enum values this table doesn't cover yet (M7/M8 territory).
+- [ ] Property test: no sequence reaches an undefined state — not built. Table-driven unit tests instead: every legal transition in the happy path plus the quote-revision branch, and representative illegal cases (wrong role, wrong state, terminal status) — not an exhaustive matrix or a fast-check property test.
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026):** `packages/domain/src/bookingTransitions.ts` (+ test). Deliberately scoped to what M5's first slice needs rather than the ticket's full 22-state ambition — see design doc `docs/superpowers/specs/2026-09-26-m5-booking-design.md` §2 for the explicit scope cut. 8 unit tests, reviewed clean (task-scoped review, not yet the plan's final whole-branch review). Two minor gaps noted by the reviewer, not yet addressed: `decline`/`reschedule`/`noShow` transitions have no direct test coverage (not in the original task's named edge-case list).
 
 <a id="shm-034"></a>
 #### SHM-034 · `BookingStateService.apply()`
@@ -769,10 +812,12 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET /search/providers?serviceId&addressId&…` · `GET /providers/:id`
 
 **Acceptance criteria**
-- [ ] p95 < 800 ms locally with 10 000 providers
-- [ ] Debt-blocked provider never returned
-- [ ] Ranking weights read from settings
+- [ ] p95 < 800 ms locally with 10 000 providers — not measured; no 10k-provider seed script exists
+- [ ] Debt-blocked provider never returned — "debt" doesn't exist yet (needs M8); blocked/suspended/rejected providers *are* excluded via `providers.status = 'APPROVED'`
+- [ ] Ranking weights read from settings — not built
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026):** `apps/api/src/search/`. Deliberately scoped down from this ticket's full description: it's a real PostGIS query (`ST_DWithin`/`ST_Distance` against `providers.base_location`/`radius_m`) ranked by **distance only**, filtered to `providers.status = 'APPROVED'` and an **approved** `provider_services` binding for the requested service. The Bayesian-prior weighted formula (rating, completion rate, response speed, recent activity) is not implemented, on purpose: those signals don't exist yet (no ratings/M9, no completed bookings/M5), so a "weighted" formula today would just be distance plus zeros — worth building once the inputs are real, not before. Query params are `serviceSlug`/`lat`/`lng`, not `serviceId`/`addressId` as the contract above names them (built before there was a booking-address concept to reference; a customer's own saved address could be resolved to lat/lng client-side, or this can be revisited once M5 needs it). Filters named in scope (experience, rating, price, available-today, verified-docs) are not implemented — rating/price/experience have no backing data yet, available-today and verified-docs need M5 bookings and SHM-022 documents respectively. 7 integration tests in `search.test.ts`, all green, plus a live end-to-end walkthrough (register → build profile → admin-approve → found by search) run twice against the running server.
 
 <a id="shm-036"></a>
 #### SHM-036 · Quote endpoint
@@ -802,10 +847,12 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `POST /bookings/checkout` · `POST /webhooks/payments/:provider` · `GET /bookings/:id`
 
 **Acceptance criteria**
-- [ ] 50 concurrent checkouts for one slot → exactly 1 succeeds
-- [ ] Webhook replayed ×10 → one capture, one ledger transaction
-- [ ] Unsigned webhook → 401
+- [~] 50 concurrent checkouts for one slot → exactly 1 succeeds — the mechanism is in place (Postgres `EXCLUDE USING gist (provider_id WITH =, slot WITH &&)` constraint, caught as SQLSTATE `23P01` and mapped to `409 CONFLICT`) but not load-tested at 50 concurrent; the same constraint pattern is already proven correct for `provider_time_off` from an earlier module.
+- [ ] Webhook replayed ×10 → one capture, one ledger transaction — not applicable yet: online payment capture isn't built (see below), so there's no webhook flow to test.
+- [ ] Unsigned webhook → 401 — not applicable to this ticket's booking-checkout webhook (doesn't exist yet); the *unrelated* generic payment webhook from M1 (`/webhooks/payments/:provider`) already does reject unsigned requests with 401, but that predates this ticket and isn't what this criterion is asking about.
 - [ ] Definition of Done met
+
+**Evidence (26 Sep 2026, in progress):** `apps/api/src/booking/` — `POST /bookings` (not `/bookings/checkout` as this ticket's contract names it) creates a `CASH`-only booking straight to `REQUESTED`, with the full validation chain (service active, provider approved, approved `provider_services` binding, address ownership, availability/time-off, commission-rate resolution) and the slot-overlap→409 behavior above. `GET /bookings/:id` and `GET /bookings` (list mine) also built. **Not built, deliberately cut for now** (see design doc §2): `ONLINE` payment mode, `PENDING_PAYMENT`→webhook→capture, the `ABANDONED` timeout path, and photo upload on the booking request (no multipart infrastructure exists in this API yet). 9 integration tests; booking-creation half reviewed clean (one real fix round: the write sequence wasn't transactional, now wrapped in `$transaction`, re-reviewed clean); the read/list half is implementer-verified (9/9 passing) but its independent task review was interrupted mid-run and has not yet completed — do not treat it as review-clean until that finishes.
 
 <a id="shm-038"></a>
 #### SHM-038 · Offers & auto-assign cascade
@@ -1769,5 +1816,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 | Date | Who | Change |
 |---|---|---|
+| 26 Sep 2026 | Claude (backend agent) | M5 booking build started: spec + implementation plan written and approved (`docs/superpowers/specs/2026-09-26-m5-booking-design.md`, `docs/superpowers/plans/2026-09-26-m5-booking-plan.md`), execution underway task-by-task with a fresh implementer + independent reviewer per task (no git in this project, so no worktree/commits — review packages are full file contents; see `.superpowers/sdd/2026-09-26-m5-booking-plan/progress.md` for the execution ledger, including one ruling made mid-flight: a brief's own code and its own test contradicted each other on a status code, resolved in favor of the codebase's established `badRequest`=400/`validationFailed`=422 convention). SHM-033 and SHM-037 moved `TODO` → `IN PROGRESS` (see their cards in §5). Done so far: the pure booking state-transition table (task 1, reviewed clean) and `POST /bookings` booking creation (task 2, reviewed clean after one real fix — the write sequence wasn't transactional, now wrapped in `$transaction`). `GET /bookings/:id` and `GET /bookings` (task 3) are implemented and self-tested (9/9) but review was interrupted mid-run — not yet independently confirmed. Tasks 4-12 (the actual accept/decline/cancel/reschedule/OTP/checklist/quote-revision/completion endpoints, and the final full-suite pass) have not started. |
+| 26 Sep 2026 | Claude (backend agent) | SHM-019, SHM-020, SHM-021, SHM-023 and SHM-035 moved `TODO` → `IN PROGRESS` (none fully meet their original acceptance criteria — see each card in §5 for exactly what's built vs. deferred, and why). New code: catalogue (categories/services/checklists/commission rules + provider expertise binding), a small unticketed `places` module (cities/areas — a hard dependency of addresses and provider location that had no ticket of its own), customer addresses (PostGIS-backed, single-default enforced), provider profile/availability/time-off/service-areas, minimal provider approve/reject (built ahead of its SHM-022 dependency because search had no way to be tested otherwise), and provider search ranked by real distance only (the rating/completion-rate/response-speed weighting in SHM-035's scope has no real data to weight yet). 64 unit + 116 integration tests green; lint, typecheck, build clean; also verified as a live HTTP walkthrough against the running server using the same example payloads now documented in Swagger (every write endpoint gained a JSON-Schema request body + realistic examples, derived from the existing Zod validation schemas via a small `ApiZodBody` helper, since none of the docs showed any request shape before this). **Known gap surfaced, not yet fixed:** provider approve/reject does not write to `audit_log`, unlike every other admin action in this codebase — flagged on SHM-023's card. |
 | 25 Sep 2026 | backend agent | SHM-009 and SHM-010 shipped: identity, sessions, refresh rotation with reuse detection, staff TOTP. 102 unit and 58 integration tests green against live PostGIS and Redis. Exercising the running API found three further defects, all now fixed: rotation recorded the replacement on the wrong session row so reuse was never detected for the first token of a family; the payment webhook inserted into columns that do not exist so it 500ed on every valid signature; and the seeded TOTP_ENCRYPTION_KEY did not decode to 32 bytes. Two latent defects fixed earlier: the `bookings.status` lint ban had never fired (the selector used `value.regex` where esquery needs `value.value`), and an explicit logout was being reported as refresh token reuse. |
 | 21 Sep 2026 | Claude (doc pack) | Tracker created: 101 tickets across 6 phases, derived from SRS v2.1, TRD and build prompt |

@@ -1,9 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { PrismaClient } from '@prisma/client';
 import { AppModule } from '../../src/app.module.js';
 import { EnvironmentService } from '../../src/config/environment.service.js';
 import { configureHttpApp, registerHttpPlugins } from '../../src/http-app.js';
+import { totpCode } from '../../src/identity/otp.js';
+import { decryptTotpSecret } from '../../src/identity/totp-vault.js';
 import { SettingsService } from '../../src/platform/settings.service.js';
 
 export type TestUser = { id: string; phoneE164: string; email: string | null; accessToken: string; refreshCookie: string | undefined };
@@ -67,6 +70,23 @@ export const postJson = (payload: unknown, token?: string): RequestInit => ({
   headers: token === undefined ? {} : { authorization: `Bearer ${token}` }
 });
 
+export const patchJson = (payload: unknown, token?: string): RequestInit => ({
+  method: 'PATCH',
+  body: JSON.stringify(payload),
+  headers: token === undefined ? {} : { authorization: `Bearer ${token}` }
+});
+
+export const putJson = (payload: unknown, token?: string): RequestInit => ({
+  method: 'PUT',
+  body: JSON.stringify(payload),
+  headers: token === undefined ? {} : { authorization: `Bearer ${token}` }
+});
+
+export const deleteWith = (token?: string): RequestInit => ({
+  method: 'DELETE',
+  headers: token === undefined ? {} : { authorization: `Bearer ${token}` }
+});
+
 /** Reads the most recent code the mock SMS adapter captured for a target. */
 export const readOtpFromInbox = async (app: NestFastifyApplication, target: string): Promise<string> => {
   const response = await callApi<{ items: { recipient: string; body: string; metadata?: Record<string, string> }[] }>(app, '/dev/inbox?limit=50');
@@ -94,3 +114,70 @@ export const registerAndVerify = async (app: NestFastifyApplication, role: 'CUST
 
 export const loginAs = async (app: NestFastifyApplication, identifier: string, password: string, totpCode?: string): Promise<ApiResponse<{ accessToken: string; user: { id: string; roles: string[]; totpEnabled: boolean }; totpRequired: boolean }>> =>
   callApi(app, '/auth/login', postJson(totpCode === undefined ? { identifier, password } : { identifier, password, totpCode }));
+
+export const SEEDED_ADMIN = { identifier: 'admin@smart-home.local', password: 'DevPassword!2026' };
+
+/**
+ * A provider fully set up and approved to offer leak-repair, with a weekly
+ * availability block covering the requested window and no service-area
+ * restriction that would block a test. Centred on BASE_LAT/BASE_LNG (Lahore)
+ * so distance-based logic elsewhere in the suite keeps working the same way.
+ */
+export const readyBookableProvider = async (
+  app: NestFastifyApplication
+): Promise<{ provider: TestUser; serviceId: number; areaId: number; minPricePaisa: number }> => {
+  const admin = await adminSession(app);
+  const service = await callApi<{ id: number; minPricePaisa: number }>(app, '/catalogue/services/leak-repair');
+  const cities = await callApi<{ items: { id: number; name: string }[] }>(app, '/places/cities');
+  const lahore = cities.body.items.find(item => item.name === 'Lahore')!;
+  const areas = await callApi<{ items: { id: number; name: string }[] }>(app, `/places/cities/${lahore.id}/areas`);
+  const areaId = areas.body.items.find(item => item.name === 'Gulberg')!.id;
+
+  const provider = await registerAndVerify(app, 'PROVIDER');
+  const asProvider = (init: RequestInit = {}): RequestInit => ({ ...init, headers: { ...init.headers, authorization: `Bearer ${provider.accessToken}` } });
+  await callApi(app, '/provider/profile', asProvider(patchJson({ cityId: lahore.id, lat: 31.5204, lng: 74.3587, radiusM: 10_000 })));
+  // Every weekday, 00:00-23:59, so any test-chosen slot lands inside it without the suite needing to know today's weekday.
+  await callApi(
+    app,
+    '/provider/availability',
+    asProvider(putJson({ items: [0, 1, 2, 3, 4, 5, 6].map(weekday => ({ weekday, startTime: '00:00', endTime: '23:59' })) }))
+  );
+  await callApi(app, '/provider/service-areas', asProvider(putJson({ areaIds: [areaId] })));
+  await callApi(app, `/provider/services/${service.body.id}`, putJson({ pricePaisa: service.body.minPricePaisa }, provider.accessToken));
+  const adminAuth = (init: RequestInit = {}): RequestInit => ({ ...init, headers: { ...init.headers, authorization: `Bearer ${admin.accessToken}` } });
+  await callApi(app, `/admin/provider-services/${provider.id}/${service.body.id}/approve`, adminAuth({ method: 'POST' }));
+  await callApi(app, `/admin/providers/${provider.id}/approve`, adminAuth({ method: 'POST' }));
+
+  return { provider, serviceId: service.body.id, areaId, minPricePaisa: service.body.minPricePaisa };
+};
+
+let testPrisma: PrismaClient | undefined;
+const prismaForTests = (): PrismaClient => (testPrisma ??= new PrismaClient());
+
+/**
+ * Signs in as the seeded admin with a valid TOTP code. The seeded admin is
+ * shared, mutable state across the whole integration suite: the first run
+ * against a fresh database enrols TOTP itself, and every later run (this
+ * suite or an earlier one) reads the already-enrolled secret back out of the
+ * database — decrypted with the same key the API uses — because there is no
+ * way to recover a secret that a previous run already consumed.
+ */
+export const adminSession = async (app: NestFastifyApplication): Promise<{ accessToken: string; userId: string }> => {
+  const bare = await loginAs(app, SEEDED_ADMIN.identifier, SEEDED_ADMIN.password);
+  if (bare.status === 201 && bare.body.totpRequired && !bare.body.user.totpEnabled) {
+    const setup = await callApi<{ secret: string }>(app, '/auth/totp/setup', { method: 'POST', headers: { authorization: `Bearer ${bare.body.accessToken}` } });
+    const code = totpCode(setup.body.secret, new Date());
+    await callApi(app, '/auth/totp/verify', postJson({ code }, bare.body.accessToken));
+    const signedIn = await loginAs(app, SEEDED_ADMIN.identifier, SEEDED_ADMIN.password, code);
+    if (signedIn.status !== 201) throw new Error(`admin totp login failed after enrolment: ${signedIn.status} ${JSON.stringify(signedIn.body)}`);
+    return { accessToken: signedIn.body.accessToken, userId: signedIn.body.user.id };
+  }
+  const rows = await prismaForTests().$queryRaw<{ secret: Buffer }[]>`SELECT totp_secret_enc as secret FROM users WHERE email = ${SEEDED_ADMIN.identifier}`;
+  const encrypted = rows[0]?.secret;
+  if (encrypted === undefined) throw new Error('Seeded admin has no TOTP secret to decrypt');
+  const secret = decryptTotpSecret(Buffer.from(process.env.TOTP_ENCRYPTION_KEY ?? '', 'base64'), encrypted);
+  const code = totpCode(secret, new Date());
+  const signedIn = await loginAs(app, SEEDED_ADMIN.identifier, SEEDED_ADMIN.password, code);
+  if (signedIn.status !== 201) throw new Error(`admin totp login failed: ${signedIn.status} ${JSON.stringify(signedIn.body)}`);
+  return { accessToken: signedIn.body.accessToken, userId: signedIn.body.user.id };
+};

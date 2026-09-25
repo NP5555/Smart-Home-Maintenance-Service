@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { Prisma } from '@prisma/client';
 import { PolicyDecorator, CurrentPrincipal, type AuthenticatedPrincipal } from '../common/policy.js';
 import { DomainError } from '../common/domain-error.js';
+import { ApiQueryField, ApiZodBody } from '../common/swagger.js';
 import { parseWith } from '../common/validation.js';
 import { SettingsService } from './settings.service.js';
 
@@ -25,7 +26,11 @@ export class SettingsController {
 
   @Get()
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })
-  @ApiOperation({ summary: 'List every configurable value with its description' })
+  @ApiOperation({
+    summary: 'List all platform settings',
+    description: 'Returns every configurable value the platform uses (e.g. fees, SLA minutes), each with a human-readable description. Pass ?q= to search by key or description. Admin only, and requires two-factor authentication.'
+  })
+  @ApiQueryField('q', { description: 'Filter by key or description substring, e.g. "sla".' })
   async list(@Query() query: unknown) {
     const { q } = parseWith(settingsListQuerySchema, query);
     const rows = await this.settings.list();
@@ -34,7 +39,7 @@ export class SettingsController {
 
   @Get(':key')
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })
-  @ApiOperation({ summary: 'Read one setting, served from the Redis cache when warm' })
+  @ApiOperation({ summary: "Read one setting's current value", description: 'Returns the current value for a single setting key. Answers come from a fast in-memory cache when available, so this is safe to call often.' })
   async read(@Param('key') key: string) {
     const parsedKey = parseWith(settingKeySchema, key);
     const value = await this.settings.get<Prisma.JsonValue>(parsedKey);
@@ -44,7 +49,11 @@ export class SettingsController {
 
   @Put(':key')
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })
-  @ApiOperation({ summary: 'Update one setting; the change is audited and the cache is invalidated across instances' })
+  @ApiOperation({
+    summary: "Change a setting's value",
+    description: 'Updates a single setting. Every change is recorded in the audit log with who made it, and the update is instantly visible to every running instance of the API.'
+  })
+  @ApiZodBody(settingUpdateSchema, { default: { summary: 'Example: SLA minutes', value: { value: 30 } } })
   async update(@Param('key') key: string, @Body() body: unknown, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
     const parsedKey = parseWith(settingKeySchema, key);
     const { value } = parseWith(settingUpdateSchema, body);

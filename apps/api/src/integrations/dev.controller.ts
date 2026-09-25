@@ -21,7 +21,10 @@ export class DevController {
 
   @Get('inbox')
   @Public()
-  @ApiOperation({ summary: 'Messages captured by the mock SMS, email and WhatsApp adapters' })
+  @ApiOperation({
+    summary: 'View messages the mock SMS/email/WhatsApp senders "sent"',
+    description: 'Development-only: since no real SMS/email/WhatsApp provider is configured, messages that would normally be delivered are captured here instead — including OTP codes — so you can complete a signup or login flow while testing locally. Disabled when DEV_INBOX_ENABLED is false.'
+  })
   inboxMessages(@Query() query: unknown) {
     this.assertEnabled();
     const { limit } = parseWith(listQuerySchema, query);
@@ -30,7 +33,10 @@ export class DevController {
 
   @Get('storage/:bucket/:key')
   @Public()
-  @ApiOperation({ summary: 'Read an object stored by the mock storage adapter' })
+  @ApiOperation({
+    summary: 'Download a file from the mock file storage',
+    description: "Development-only: retrieves a file that was 'uploaded' to the mock storage adapter, which stands in for a real object store (like S3 or MinIO) in this environment."
+  })
   storageObject(@Param('bucket') bucket: string, @Param('key') key: string) {
     this.assertEnabled();
     const parsedBucket = parseWith(bucketSchema, bucket);

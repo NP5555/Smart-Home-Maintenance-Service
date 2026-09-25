@@ -40,8 +40,27 @@ export const configureHttpApp = (app: NestFastifyApplication, environment: Envir
 
   const openApi = new DocumentBuilder()
     .setTitle('Smart Home Maintenance Services API')
-    .setDescription('Backend foundation: identity, health, platform settings, signed webhooks and mock integration adapters.')
+    .setDescription(
+      [
+        'The backend API for the Smart Home Maintenance Service platform: account sign-up and login, admin settings, payment webhooks, and health checks.',
+        '',
+        '**Getting started:** most endpoints need you to be logged in. Call `POST /auth/login` (password) or the OTP endpoints to get an `accessToken`, then click "Authorize" above and enter it as `Bearer <token>` to unlock the endpoints marked with a lock icon.',
+        '',
+        'Endpoints under **development** only work when the API is running with `DEV_INBOX_ENABLED=true` (local/dev setups) — they let you see the text messages, emails and files the mock providers would otherwise send to real services, which is how you retrieve OTP codes while testing.'
+      ].join('\n')
+    )
     .setVersion('1.0.0')
+    .addTag('health', 'Check whether the API and the services it depends on (database, cache, background queues, file storage) are up and responding.')
+    .addTag('catalogue', 'Browse service categories and bookable services, and (admin) manage them, commission rates, and which providers are approved to offer which service.')
+    .addTag('places', 'Look up the cities and areas the platform operates in — use an area id when creating a customer address.')
+    .addTag('customer', 'Actions for a signed-in customer account, such as managing saved addresses.')
+    .addTag('provider', 'Actions for a signed-in service-provider account: profile, weekly availability, leave, and which areas they serve.')
+    .addTag('search', "Find approved providers for a service near a point, and view a provider's public profile.")
+    .addTag('booking', 'Request a provider for a service and carry the job through to completion: accept/decline, cancel/reschedule, arrival OTP, checklist, quote revisions, and finishing the job.')
+    .addTag('auth', 'Sign up, log in, and manage your account: passwords, one-time verification codes (OTP), sessions, and two-factor authentication (TOTP).')
+    .addTag('settings', 'Admin only. View and change platform-wide configuration values. Requires an ADMIN account with two-factor authentication turned on.')
+    .addTag('webhooks', "Called automatically by external providers (e.g. the payment gateway) to report events. Not meant to be called directly by client apps.")
+    .addTag('development', 'Local/dev-only helpers for inspecting what the mock SMS, email and file-storage providers received, so flows like OTP login can be tested without real providers. Disabled in production.')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
     .addServer(`/${GLOBAL_PREFIX}`)
     .build();

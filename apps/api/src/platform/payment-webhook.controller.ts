@@ -33,7 +33,11 @@ export class PaymentWebhookController {
   @Post(':provider')
   @HttpCode(202)
   @Public()
-  @ApiOperation({ summary: 'Signed gateway webhook; deduplicated by (gateway, gateway_event_id)' })
+  @ApiOperation({
+    summary: 'Payment provider webhook (not for direct use)',
+    description:
+      "Called automatically by the payment gateway to report events like a completed or failed payment. The request must carry the gateway's signature to prove it is genuine. If the same event is delivered more than once (gateways commonly retry), later copies are recognized and safely ignored instead of being processed twice."
+  })
   async receive(
     @Req() request: FastifyRequest,
     @Headers() headers: Record<string, string | string[] | undefined>,

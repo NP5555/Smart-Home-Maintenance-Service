@@ -42,23 +42,30 @@ export class HealthController {
 
   @Get()
   @Public()
-  @ApiOperation({ summary: 'Service banner' })
+  @ApiOperation({ summary: 'Welcome message', description: 'Confirms the API is reachable and points you to the docs and health check endpoints. Handy as a first request to check the server is up at all.' })
   root() {
     return { service: 'smart-home-maintenance-service', api: 'api/v1', docs: '/api/docs', health: '/health/ready', environment: this.environment.values.NODE_ENV };
   }
 
   @Get('health/live')
   @Public()
-  @ApiOperation({ summary: 'Liveness probe: the process is running' })
+  @ApiOperation({
+    summary: 'Is the server process running?',
+    description: 'A minimal check that only confirms the server process is alive and responding — it does not check the database, cache, or anything else. Used by infrastructure to decide whether the process needs restarting.'
+  })
   live() {
     return { status: 'ok', pid: process.pid, uptimeSeconds: Math.round(process.uptime()) };
   }
 
   @Get('health/ready')
   @Public()
-  @ApiOperation({ summary: 'Readiness probe: database, redis, queues, settings and storage' })
-  @ApiResponse({ status: 200, description: 'Every dependency answered' })
-  @ApiResponse({ status: 503, description: 'At least one dependency is down' })
+  @ApiOperation({
+    summary: 'Is the API fully ready to handle requests?',
+    description:
+      'Checks every service the API depends on — database, Redis cache, background job queues, the settings store and file storage — and reports "ok" only when all of them respond correctly. Use this (not the liveness check) to decide whether it is safe to send the API real traffic.'
+  })
+  @ApiResponse({ status: 200, description: 'Every dependency is healthy.' })
+  @ApiResponse({ status: 503, description: 'At least one dependency is unreachable or unhealthy; see the "checks" array for which one.' })
   async ready(): Promise<ReadinessReport> {
     const checks = await Promise.all([
       probe('database', async () => {
@@ -95,7 +102,10 @@ export class HealthController {
 
   @Get('health/queues')
   @Public()
-  @ApiOperation({ summary: 'BullMQ depth per registered queue' })
+  @ApiOperation({
+    summary: 'How many jobs are waiting in each background queue',
+    description: 'Returns the number of pending jobs for each background queue (e.g. notifications, payments, verification). A number that keeps growing usually means a worker is stuck or not running.'
+  })
   async queueDepths(): Promise<Record<QueueName, number>> {
     return this.queues.depths();
   }
