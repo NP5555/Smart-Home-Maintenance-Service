@@ -1,0 +1,15 @@
+---
+description: Next.js web app conventions
+globs: apps/web/**
+alwaysApply: false
+---
+# Frontend rules (apps/web)
+- App Router under `app/[locale]/…`; route groups `(public)`, `c`, `p`, `agent`, `finance`, `admin` (TRD §15).
+- Mobile-first: design at 360 px first; use Tailwind logical utilities (`ms-*`, `pe-*`, `start-*`) so Urdu RTL works; never `ml-/mr-/left-/right-` for layout.
+- All strings via next-intl in `messages/en.json` and `messages/ur.json`; add both keys in the same change.
+- Forms: react-hook-form + zod schema from `@smart-home/contracts`; errors as text under the field; visible focus rings; labels on every input.
+- Data: TanStack Query hooks per resource in `lib/api/*`; send `Idempotency-Key` (uuid) on money/state mutations; handle problem+json codes with friendly messages.
+- Booking status → label/colour/next action comes only from `lib/booking-status-ui.ts`.
+- Provider area (`/p`) is a PWA: keep bundles small (no chart libs), compress images client-side (≤1600 px), queue evidence uploads offline in IndexedDB with a client UUID.
+- Never display customer phone/full name to providers, or provider phone to customers.
+- Use shadcn/ui components; keep a consistent, calm visual style; large touch targets (≥44 px) on provider screens.

@@ -1,0 +1,15 @@
+{
+    "extends": "@smart-home/config/tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "dist",
+        "types": [
+            "node"
+        ],
+        "experimentalDecorators": true,
+        "emitDecoratorMetadata": true
+    },
+    "include": [
+        "src/**/*.ts",
+        "test/**/*.ts"
+    ]
+}

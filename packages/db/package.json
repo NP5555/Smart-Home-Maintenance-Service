@@ -1,0 +1,30 @@
+{
+  "name": "@smart-home/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:migrate": "dbmate -d migrations up",
+    "db:new": "dbmate -d migrations new",
+    "db:pull": "prisma db pull --schema prisma/schema.prisma && prisma generate --schema prisma/schema.prisma",
+    "db:reset": "dbmate -d migrations drop --force && dbmate -d migrations up && pnpm db:seed",
+    "db:seed": "tsx seed/seed.ts",
+    "build": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint seed --max-warnings=0",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@prisma/client": "6.12.0",
+    "argon2": "^0.43.0"
+  },
+  "devDependencies": {
+    "@smart-home/config": "workspace:*",
+    "@types/node": "^22.16.4",
+    "dbmate": "^2.27.0",
+    "prisma": "6.12.0",
+    "tsx": "^4.20.3",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "name": "smart-home-maintenance-service",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.14.0",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "build": "turbo build",
+    "dev": "turbo dev --parallel",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "test": "turbo test",
+    "test:integration": "pnpm --filter @smart-home/api test:integration",
+    "db:migrate": "pnpm --filter @smart-home/db db:migrate",
+    "db:pull": "pnpm --filter @smart-home/db db:pull",
+    "db:reset": "pnpm --filter @smart-home/db db:reset",
+    "db:seed": "pnpm --filter @smart-home/db db:seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.31.0",
+    "@types/node": "^22.16.4",
+    "eslint": "^9.31.0",
+    "prettier": "^3.6.2",
+    "turbo": "^2.5.5",
+    "typescript": "^5.8.3",
+    "typescript-eslint": "^8.38.0"
+  }
+}

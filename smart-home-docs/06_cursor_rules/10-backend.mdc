@@ -1,0 +1,15 @@
+---
+description: NestJS API and worker conventions
+globs: apps/api/**
+alwaysApply: false
+---
+# Backend rules (apps/api)
+- One Nest module per TRD §4 row; a module only touches its own tables; cross-module calls go through exported services or domain events.
+- Controllers are thin: validate with zod DTOs from `@smart-home/contracts`, call one application service, map to an output DTO. Never return Prisma entities.
+- Errors: throw `DomainError(code)`; the global filter maps to RFC 9457 problem+json with codes from `contracts/errors.ts`.
+- Transactions: `prisma.$transaction(async tx => …)` with explicit isolation where needed; pass `tx` down; no network calls inside.
+- Raw SQL only in repository functions (PostGIS, tstzrange, SKIP LOCKED); always parameterised with `Prisma.sql`.
+- Jobs: BullMQ processors in `worker.ts`; handlers idempotent (key by outbox id / job id); delayed jobs for timeouts; repeatables registered with fixed jobIds.
+- Webhooks: verify signature on raw body, dedupe via `payment_events` unique key, then process in one transaction.
+- Logging: pino with requestId/userId/bookingId; never log phone, email, CNIC, OTP, tokens, addresses.
+- Tests: integration tests with Testcontainers (postgis + redis) for anything relying on DB constraints or triggers.

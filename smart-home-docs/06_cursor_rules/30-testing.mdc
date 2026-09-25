@@ -1,0 +1,12 @@
+---
+description: Testing expectations
+globs: "**/*.test.ts,**/*.spec.ts,e2e/**"
+alwaysApply: false
+---
+# Testing rules
+- Every SRS requirement implemented in a change gets at least one automated test named with its ID, e.g. `it('FR-BK-02: concurrent confirms lock one slot')`.
+- Domain: exhaustive transition matrix, tier rules R1–R10, SLA calendar edges, demerit decay/expiry, ranking determinism, money rounding; property tests with fast-check for state sequences and ledger balance.
+- Use `FakeClock` and seeded `rng`; never `Date.now()` or `Math.random()` in tests or domain code.
+- Integration tests must assert DB-level guarantees (exclusion constraint, insert-only triggers, rating FK trigger, release guard, ledger balance).
+- E2E (Playwright) run against mock adapters, at 360 px and desktop, and at least one Urdu pass per journey.
+- A bug fix starts with a failing test.

@@ -1,0 +1,24 @@
+---
+description: Core invariants for Smart Home Maintenance Services — always apply
+alwaysApply: true
+---
+# Project core rules
+
+Specs live in `docs/`. Precedence: `01_SRS_v2.1.md` > `04_schema.sql` > `02_TRD.md`. Never contradict them silently; if you must deviate, say so and update the doc in the same change.
+
+## Invariants (never break)
+- `bookings.status` changes only via `BookingStateService.apply()` (transaction, `SELECT … FOR UPDATE`, `domain.nextState`, history row, `SET LOCAL app.transition_ctx='on'`, outbox event). Legal moves = SRS §6.2 T1–T26 only.
+- Money is `bigint` paisa. Only `LedgerService.post()` writes ledger rows; every posting balances and follows TRD §6.3. No floats, no `Number()` on money.
+- Payment is released only after a release-permitting verification outcome, dispute FULL_RELEASE, or the 72 h auto-release rule.
+- Ratings are created only from a submitted verification with outcome VERIFIED_SATISFIED, VERIFIED_WITH_ISSUE or LINK_CONFIRMED. There is no rating form.
+- Verification records, ledger entries, audit log and status history are insert-only.
+- Users and bookings are never physically deleted.
+- External side effects (SMS, email, gateway, telephony) run from the outbox in the worker — never inside a DB transaction or directly in a controller.
+- All business values come from `settings` (SRS §13). No magic numbers for fees, timers, thresholds.
+- Every route has a `@Policy()`; every privileged action writes `audit_log`; money/state mutations accept `Idempotency-Key`.
+
+## Structure
+- Pure rules → `packages/domain` (no Nest/Prisma/Node I/O; inject `Clock` and `rng`).
+- Shared zod schemas, enums, error codes → `packages/contracts`.
+- Schema changes → new dbmate SQL migration in `packages/db/migrations`, then `pnpm db:pull`. Never `prisma migrate`.
+- Time zone for business rules: Asia/Karachi. Store UTC.
