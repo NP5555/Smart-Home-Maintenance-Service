@@ -1,6 +1,5 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
 import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -20,7 +19,7 @@ export const OPENAPI_PATH = 'api/docs';
 export const createHttpAdapter = (logLevel: string, isProduction: boolean): FastifyAdapter =>
   new FastifyAdapter({
     logger: buildLoggerOptions(logLevel, isProduction),
-    genReqId: (request: IncomingMessage) => resolveRequestId(request),
+    genReqId: request => resolveRequestId(request.headers),
     bodyLimit: 1_048_576,
     trustProxy: true,
     disableRequestLogging: false
@@ -33,7 +32,7 @@ export const bootstrap = async (): Promise<NestFastifyApplication> => {
   await app.register(rawBody, { field: 'rawBody', global: false, encoding: false, runFirst: true });
   await app.register(helmet, { global: true, contentSecurityPolicy: false });
   await app.register(cookie, { secret: environment.values.CSRF_SECRET });
-  await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute', keyGenerator: request => resolveRequestId(request) });
+  await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute', keyGenerator: request => request.ip });
 
   app.enableCors({ origin: environment.values.CORS_ORIGINS, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
   app.setGlobalPrefix(GLOBAL_PREFIX, { exclude: [{ path: '', method: RequestMethod.GET }, { path: 'health/(.*)', method: RequestMethod.GET }, { path: 'api/docs/(.*)', method: RequestMethod.GET }] });

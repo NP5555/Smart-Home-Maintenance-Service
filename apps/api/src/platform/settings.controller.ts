@@ -44,7 +44,7 @@ export class SettingsController {
   @Put(':key')
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })
   @ApiOperation({ summary: 'Update one setting; the change is audited and the cache is invalidated across instances' })
-  async update(@Param('key') key: string, @Body() body: unknown, @Req() request: FastifyRequest, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
+  async update(@Param('key') key: string, @Body() body: unknown) {
     const parsedKey = parseWith(settingKeySchema, key);
     const { value } = parseWith(settingUpdateSchema, body);
     return this.settings.set(parsedKey, value as Prisma.InputJsonValue, principal.userId);

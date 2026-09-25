@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module.js';
-import { buildLoggerOptions } from './logger.js';
 import { EnvironmentService } from './config/environment.service.js';
 import { OutboxDispatcher } from './platform/outbox.dispatcher.js';
 import { SettingsService } from './platform/settings.service.js';
@@ -9,7 +8,7 @@ import { QueueRegistry, REPEATABLE_JOBS } from './queues/queue.registry.js';
 
 export const startWorker = async (): Promise<void> => {
   const environment = new EnvironmentService();
-  const context = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true, logger: buildLoggerOptions(environment.values.LOG_LEVEL, environment.isProduction) });
+  const context = await NestFactory.createApplicationContext(AppModule, { bufferLogs: true });
   const settings = context.get(SettingsService);
   await settings.start();
   const queues = context.get(QueueRegistry);

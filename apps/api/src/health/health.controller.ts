@@ -6,7 +6,8 @@ import { PrismaService } from '../database/prisma.service.js';
 import { RedisService } from '../database/redis.module.js';
 import { QueueRegistry, type QueueName } from '../queues/queue.registry.js';
 import { SettingsService } from '../platform/settings.service.js';
-import { ObjectStoragePort, OBJECT_STORAGE } from '../integrations/integrations.module.js';
+import { OBJECT_STORAGE } from '../integrations/integrations.module.js';
+import type { ObjectStoragePort } from '../integrations/ports.js';
 import { Inject } from '@nestjs/common';
 
 export type HealthState = 'ok' | 'degraded' | 'down';

@@ -1,13 +1,11 @@
 {
   "extends": "@smart-home/config/tsconfig.base.json",
   "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
+    "noEmit": true,
     "types": ["node"],
     "lib": ["ES2022"],
     "experimentalDecorators": true,
-    "emitDecoratorMetadata": true,
-    "noEmit": true
+    "emitDecoratorMetadata": true
   },
   "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts", "vitest.integration.config.ts"]
 }
