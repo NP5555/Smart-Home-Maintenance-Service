@@ -6,5 +6,9 @@ import { SettingsController } from './settings.controller.js';
 import { SettingsService } from './settings.service.js';
 
 @Global()
-@Module({ controllers: [SettingsController, PaymentWebhookController], providers: [SettingsService, AuditService, OutboxDispatcher], exports: [SettingsService, AuditService, OutboxDispatcher] })
+@Module({
+  controllers: [SettingsController, PaymentWebhookController],
+  providers: [SettingsService, AuditService, OutboxDispatcher],
+  exports: [SettingsService, AuditService, OutboxDispatcher]
+})
 export class PlatformModule {}
