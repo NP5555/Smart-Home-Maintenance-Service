@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { createHash, createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 import { EnvironmentService } from '../config/environment.service.js';
 import type {
@@ -51,7 +51,7 @@ export class DevInbox {
 
 @Injectable()
 export class MockSmsSender implements SmsSenderPort {
-  constructor(private readonly inbox: DevInbox) {}
+  constructor(@Inject(DevInbox) private readonly inbox: DevInbox) {}
 
   async send(to: string, body: string, meta: Record<string, string> = {}): Promise<{ providerMessageId: string }> {
     if (!/^\+[1-9]\d{7,14}$/.test(to)) throw new Error('SMS recipient must be E.164');
@@ -61,7 +61,7 @@ export class MockSmsSender implements SmsSenderPort {
 
 @Injectable()
 export class MockEmailSender implements EmailSenderPort {
-  constructor(private readonly inbox: DevInbox) {}
+  constructor(@Inject(DevInbox) private readonly inbox: DevInbox) {}
 
   async send(to: string, subject: string, body: string, meta: Record<string, string> = {}): Promise<{ providerMessageId: string }> {
     if (!to.includes('@')) throw new Error('Email recipient must be an address');
@@ -71,7 +71,7 @@ export class MockEmailSender implements EmailSenderPort {
 
 @Injectable()
 export class MockWhatsAppSender implements WhatsAppSenderPort {
-  constructor(private readonly inbox: DevInbox) {}
+  constructor(@Inject(DevInbox) private readonly inbox: DevInbox) {}
 
   async send(to: string, body: string, meta: Record<string, string> = {}): Promise<{ providerMessageId: string }> {
     return { providerMessageId: this.inbox.add({ channel: 'WHATSAPP', recipient: to, body, metadata: meta }).id };
@@ -140,7 +140,7 @@ export const signMockWebhook = (secret: string, timestamp: number, body: string)
 
 @Injectable()
 export class MockPaymentGateway implements PaymentGatewayPort {
-  constructor(private readonly environment: EnvironmentService) {}
+  constructor(@Inject(EnvironmentService) private readonly environment: EnvironmentService) {}
 
   async createCheckout(input: PaymentCheckoutInput): Promise<PaymentCheckoutResult> {
     if (input.amount <= 0n) throw new Error('Payment amount must be positive');

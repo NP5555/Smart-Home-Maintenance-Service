@@ -9,20 +9,40 @@ const hasTable = async (table: string): Promise<boolean> => {
   return rows[0]?.present === true;
 };
 
+/**
+ * Returns a booking to test the status guard against, creating a customer, an
+ * address and the booking itself when the database has none. A booking needs a
+ * real uuid address, so the address row is built here rather than borrowing an
+ * `areas` id, which is a smallint.
+ */
 const findAnyBookingId = async (): Promise<string | undefined> => {
   const existing = await prisma.$queryRaw<{ id: string }[]>(Prisma.sql`SELECT id FROM bookings LIMIT 1`);
   const found = existing[0]?.id;
   if (found !== undefined) return found;
+
   const [service] = await prisma.$queryRaw<{ id: number }[]>(Prisma.sql`SELECT id FROM services ORDER BY id LIMIT 1`);
   const [area] = await prisma.$queryRaw<{ id: number }[]>(Prisma.sql`SELECT id FROM areas ORDER BY id LIMIT 1`);
   const [customer] = await prisma.$queryRaw<{ user_id: string }[]>(Prisma.sql`SELECT user_id FROM user_roles WHERE role_code = 'CUSTOMER' LIMIT 1`);
   if (service === undefined || area === undefined || customer === undefined) return undefined;
-  const inserted = await prisma.$queryRaw<{ id: string }[]>(
-    Prisma.sql`INSERT INTO bookings(customer_id, service_id, address_id, status, payment_mode, payment_status)
-      SELECT u.id, ${service.id}, ${area.id}, 'REQUESTED', 'CASH', 'CASH_DUE' FROM users u WHERE u.id = ${customer.user_id}::uuid
-      RETURNING id`
-  );
-  return inserted[0]?.id;
+
+  const inserted = await prisma.$transaction(async tx => {
+    const [address] = await tx.$queryRaw<{ id: string }[]>(
+      Prisma.sql`INSERT INTO addresses(customer_id, label, line1, area_id, location)
+                 VALUES (${customer.user_id}::uuid, 'Test', 'Test address', ${area.id}, ST_SetSRID(ST_MakePoint(74.3, 31.5), 4326)::geography)
+                 ON CONFLICT DO NOTHING
+                 RETURNING id`
+    );
+    if (address === undefined) return undefined;
+    const [booking] = await tx.$queryRaw<{ id: string }[]>(
+      Prisma.sql`INSERT INTO bookings(customer_id, service_id, address_id, status, payment_mode, payment_status, slot, scheduled_start, scheduled_end, quoted_amount_paisa, approved_total_paisa, commission_rate_bp)
+                 VALUES (${customer.user_id}::uuid, ${service.id}, ${address.id}::uuid, 'REQUESTED', 'CASH', 'CASH_DUE',
+                   tstzrange('2026-10-01 09:00:00+00', '2026-10-01 11:00:00+00'),
+                   '2026-10-01 09:00:00+00', '2026-10-01 11:00:00+00', 0, 0, 1500)
+                 RETURNING id`
+    );
+    return booking?.id;
+  });
+  return inserted;
 };
 
 beforeAll(async () => {

@@ -18,6 +18,10 @@ export type AuthenticatedRequest = FastifyRequest & { principal?: AuthenticatedP
 
 export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(POLICY_METADATA_KEY, { public: true } satisfies Policy);
 
+/** Any signed in user. The role list is intentionally empty. */
+export const Authenticated = (roles: readonly ActorRole[] = []): MethodDecorator & ClassDecorator =>
+  SetMetadata(POLICY_METADATA_KEY, { roles } satisfies Policy);
+
 export const PolicyDecorator = (policy: Policy): MethodDecorator & ClassDecorator => SetMetadata(POLICY_METADATA_KEY, policy);
 
 export const CurrentPrincipal = createParamDecorator((_data: unknown, context: ExecutionContext): AuthenticatedPrincipal | undefined =>

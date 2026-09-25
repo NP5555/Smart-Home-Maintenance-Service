@@ -25,7 +25,15 @@ export const environmentSchema = z
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
     CSRF_SECRET: z.string().min(32, 'CSRF_SECRET must be at least 32 characters'),
     OTP_PEPPER: z.string().min(32, 'OTP_PEPPER must be at least 32 characters'),
-    TOTP_ENCRYPTION_KEY: z.string().min(40, 'TOTP_ENCRYPTION_KEY must be a base64 encoded 32 byte key'),
+    TOTP_ENCRYPTION_KEY: z
+      .string()
+      .refine(value => {
+        try {
+          return Buffer.from(value, 'base64').length === 32;
+        } catch {
+          return false;
+        }
+      }, 'TOTP_ENCRYPTION_KEY must be a base64 encoded 32 byte key'),
 
     CORS_ORIGINS: csv.default('http://localhost:3000'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

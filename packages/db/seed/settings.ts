@@ -3,6 +3,12 @@ export type SettingsDefinition = { key: string; value: unknown; description: str
 const S = (key: string, value: unknown, description: string): SettingsDefinition => ({ key, value, description });
 
 export const settingsDefinitions: readonly SettingsDefinition[] = [
+  S('auth.otp_ttl_min', 10, 'FR-CU-04: minutes an OTP code stays valid.'),
+  S('auth.otp_max_attempts', 5, 'FR-CU-04: verification attempts before a code is locked.'),
+  S('auth.otp_resend_cooldown_sec', 60, 'Seconds before another OTP may be requested for the same target.'),
+  S('auth.login_max_attempts', 5, 'FR-CU-01: wrong passwords tolerated before the identifier is rate-limited.'),
+  S('auth.login_window_min', 15, 'NFR-SE-06: window the login attempt counter applies over.'),
+  S('auth.staff_totp_required', true, 'NFR-SE-07: staff roles must pass TOTP before reaching staff routes.'),
   S('booking.offer_timeout_min', 15, 'BR-01: minutes an offer stays open before the next provider is offered.'),
   S('booking.free_cancel_hours', 4, 'Hours before the slot within which a customer cancels free.'),
   S('booking.late_cancel_fee_paisa', 50_000, 'Late cancellation fee charged in paisa.'),

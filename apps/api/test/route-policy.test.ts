@@ -16,6 +16,9 @@ const collectFiles = (directory: string): string[] => {
 
 const routeDecorators = ['@Get', '@Post', '@Put', '@Patch', '@Delete', '@Controller'];
 
+/** Every decorator that constitutes a declaration of the route's authorisation policy. */
+const policyDecorators = ['@PolicyDecorator(', '@Public()', '@Authenticated('];
+
 const relative = (path: string): string => path.slice(sourceRoot.length + 1).replaceAll('\\', '/');
 
 describe('every route declares an authorisation policy (TRD §16)', () => {
@@ -24,10 +27,12 @@ describe('every route declares an authorisation policy (TRD §16)', () => {
 
   it('finds the controllers that make up the HTTP surface', () => {
     expect(controllers.length).toBeGreaterThan(0);
-    expect(controllers.map(relative)).toEqual(expect.arrayContaining(['health/health.controller.ts', 'platform/settings.controller.ts', 'platform/payment-webhook.controller.ts', 'integrations/dev.controller.ts']));
+    expect(controllers.map(relative)).toEqual(
+      expect.arrayContaining(['health/health.controller.ts', 'platform/settings.controller.ts', 'platform/payment-webhook.controller.ts', 'integrations/dev.controller.ts', 'identity/auth.controller.ts'])
+    );
   });
 
-  it('NFR-SE-02: every route handler carries @Policy or @Public', () => {
+  it('NFR-SE-02: every route handler carries @Policy, @Public or @Authenticated', () => {
     const missing: string[] = [];
     for (const file of controllers) {
       const source = readFileSync(file, 'utf8');
@@ -36,7 +41,7 @@ describe('every route declares an authorisation policy (TRD §16)', () => {
         const match = /^\s*@(Get|Post|Put|Patch|Delete)\b/.exec(line);
         if (match === null) continue;
         const window = lines.slice(index, index + 5).join('\n');
-        if (!window.includes('@PolicyDecorator(') && !window.includes('@Public(')) missing.push(`${relative(file)}:${index + 1}`);
+        if (!policyDecorators.some(decorator => window.includes(decorator))) missing.push(`${relative(file)}:${index + 1}`);
       }
     }
     expect(missing).toEqual([]);
@@ -46,7 +51,7 @@ describe('every route declares an authorisation policy (TRD §16)', () => {
     for (const file of controllers) {
       const source = readFileSync(file, 'utf8');
       const routeCount = (source.match(/^\s*@(Get|Post|Put|Patch|Delete)\(/gm) ?? []).length;
-      const policyCount = (source.match(/@(PolicyDecorator\(|Public\(\))/g) ?? []).length;
+      const policyCount = policyDecorators.reduce((total, decorator) => total + [...source.matchAll(new RegExp(decorator.replace(/[()]/g, '\\$&'), 'g'))].length, 0);
       expect(policyCount, `${relative(file)} declares ${routeCount} routes but ${policyCount} policies`).toBeGreaterThanOrEqual(routeCount);
     }
   });
