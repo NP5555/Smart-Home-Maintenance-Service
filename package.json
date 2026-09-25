@@ -25,6 +25,7 @@
     "format:check": "prettier --check \"**/*.{ts,json,md,yml}\"",
     "db:migrate": "npm run db:migrate --workspace @smart-home/db",
     "db:new": "npm run db:new --workspace @smart-home/db",
+    "db:status": "npm run db:status --workspace @smart-home/db",
     "db:pull": "npm run db:pull --workspace @smart-home/db",
     "db:reset": "npm run db:reset --workspace @smart-home/db",
     "db:seed": "npm run db:seed --workspace @smart-home/db",

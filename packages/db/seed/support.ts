@@ -4,7 +4,7 @@ export const prisma = new PrismaClient();
 
 export const literal = (value: string): string => `'${value.replaceAll("'", "''")}'`;
 
-export const json = (value: unknown): string => `${JSON.stringify(value)}::jsonb`;
+export const json = (value: unknown): string => `'${JSON.stringify(value).replaceAll("'", "''")}'::jsonb`;
 
 export const execute = async (sql: string): Promise<number> => prisma.$executeRawUnsafe(sql);
 
