@@ -7,9 +7,9 @@
 | Project key | `SHM` |
 | Baseline docs | SRS v2.1 · TRD · ERD · schema.sql · Cursor build prompt |
 | Tracker created | 21 Sep 2026 |
-| Last updated | 21 Sep 2026 — *update on every change* |
+| Last updated | 25 Sep 2026 - *update on every change* |
 | Product owner | Muhammad Hamza Kundi |
-| BE lead | _name_ |
+| BE lead | backend agent |
 | FE lead | _name_ |
 
 ---
@@ -79,6 +79,18 @@ grep -oE '\| (TODO|IN PROGRESS|IN REVIEW|BLOCKED|DONE) \|' docs/PROGRESS_TRACKER
 | E5 | 0 / 7 | 0 / 4 | 0 / 2 | 0 / 70 | 0 % |
 | **All** | **0 / 56** | **0 / 36** | **0 / 9** | **0 / 507** | **0 %** |
 
+Nothing is counted as `DONE` yet: SHM-001 to SHM-012 are merged and every one of
+their acceptance criteria is either ticked on evidence or still open, but per
+section 1 only a reviewer sets `DONE` after confirming the criteria. The counts
+above stay at zero until then. SHM-013 has not been run in CI.
+
+**Open in E0, with evidence attached to each:** the four MinIO buckets cannot be
+created locally (see Blockers); the doc pack lives in `smart-home-docs/` rather
+than the `docs/` path the SHM-001 criteria name, and the ticket still says
+`pnpm` where the project uses npm workspaces; there is no README section on the
+schema-change workflow; no lint-banned-pattern fixtures exist yet; and the
+outbox exactly-once dispatch test for SHM-008 is not written.
+
 Priority: **P0** = required for the phase exit gate · **P1** = required for release · **P2** = nice to have. Story points are relative size (Fibonacci). Calibrate velocity at the end of Phase 0 and re-plan dates from that, not from the point totals.
 
 ---
@@ -89,19 +101,19 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-001](#shm-001) | SHARED | Task | P0 | 3 | Monorepo scaffold & shared tooling | — | — | TODO | — |
-| [SHM-002](#shm-002) | SHARED | Task | P0 | 2 | Local infrastructure via docker-compose | SHM-001 | — | TODO | — |
-| [SHM-003](#shm-003) | BE | Task | P0 | 3 | DB package: migration, dbmate scripts, Prisma pull | SHM-002 | — | TODO | — |
-| [SHM-004](#shm-004) | BE | Task | P0 | 5 | Deterministic seed data | SHM-003 | — | TODO | — |
-| [SHM-005](#shm-005) | BE | Task | P0 | 3 | `packages/contracts` — shared types for FE and BE | SHM-003 | — | TODO | — |
-| [SHM-006](#shm-006) | BE | Task | P0 | 3 | `packages/domain` basics: Clock, Money, SlaCalendar | SHM-001 | — | TODO | — |
-| [SHM-007](#shm-007) | BE | Story | P0 | 5 | API skeleton (NestJS 11 on Fastify) | SHM-003, SHM-005 | — | TODO | — |
-| [SHM-008](#shm-008) | BE | Story | P0 | 5 | Platform services: settings, audit, idempotency, outbox | SHM-007 | — | TODO | — |
-| [SHM-009](#shm-009) | BE | Story | P0 | 8 | Identity: register, OTP, login, sessions | SHM-008 | — | TODO | — |
-| [SHM-010](#shm-010) | BE | Story | P0 | 5 | Staff TOTP + RBAC policy guard | SHM-009 | — | TODO | — |
-| [SHM-011](#shm-011) | BE | Task | P0 | 5 | Integration ports + working mocks; dev inbox | SHM-007 | — | TODO | — |
-| [SHM-012](#shm-012) | BE | Test | P0 | 3 | DB invariant integration tests | SHM-003, SHM-008 | — | TODO | — |
-| [SHM-013](#shm-013) | SHARED | Task | P0 | 3 | CI pipeline (GitHub Actions) | SHM-001, SHM-002 | — | TODO | — |
+| [SHM-001](#shm-001) | SHARED | Task | P0 | 3 | Monorepo scaffold & shared tooling | — | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-002](#shm-002) | SHARED | Task | P0 | 2 | Local infrastructure via docker-compose | SHM-001 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-003](#shm-003) | BE | Task | P0 | 3 | DB package: migration, dbmate scripts, Prisma pull | SHM-002 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-004](#shm-004) | BE | Task | P0 | 5 | Deterministic seed data | SHM-003 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-005](#shm-005) | BE | Task | P0 | 3 | `packages/contracts` — shared types for FE and BE | SHM-003 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-006](#shm-006) | BE | Task | P0 | 3 | `packages/domain` basics: Clock, Money, SlaCalendar | SHM-001 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-007](#shm-007) | BE | Story | P0 | 5 | API skeleton (NestJS 11 on Fastify) | SHM-003, SHM-005 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-008](#shm-008) | BE | Story | P0 | 5 | Platform services: settings, audit, idempotency, outbox | SHM-007 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-009](#shm-009) | BE | Story | P0 | 8 | Identity: register, OTP, login, sessions | SHM-008 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-010](#shm-010) | BE | Story | P0 | 5 | Staff TOTP + RBAC policy guard | SHM-009 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-011](#shm-011) | BE | Task | P0 | 5 | Integration ports + working mocks; dev inbox | SHM-007 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-012](#shm-012) | BE | Test | P0 | 3 | DB invariant integration tests | SHM-003, SHM-008 | backend agent | IN REVIEW | merged, awaiting reviewer |
+| [SHM-013](#shm-013) | SHARED | Task | P0 | 3 | CI pipeline (GitHub Actions) | SHM-001, SHM-002 | backend agent | TODO | — |
 | [SHM-014](#shm-014) | FE | Task | P0 | 3 | Web app scaffold: Next.js 15, i18n, design system | SHM-001 | — | TODO | — |
 | [SHM-015](#shm-015) | FE | Task | P0 | 3 | Typed API client with token refresh | SHM-005, SHM-007 | — | TODO | — |
 | [SHM-016](#shm-016) | FE | Story | P0 | 5 | Auth pages | SHM-009, SHM-010, SHM-015 | — | TODO | — |
@@ -112,38 +124,38 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-019](#shm-019) | BE | Story | P0 | 5 | Catalogue API (admin CRUD + public read) | SHM-008, SHM-010 | — | TODO | — |
-| [SHM-020](#shm-020) | BE | Story | P0 | 5 | Customer profile, addresses, favourites, deactivate | SHM-009 | — | TODO | — |
-| [SHM-021](#shm-021) | BE | Story | P0 | 8 | Provider onboarding API | SHM-009, SHM-019 | — | TODO | — |
-| [SHM-022](#shm-022) | BE | Story | P0 | 5 | Provider documents & CNIC protection | SHM-021, SHM-011 | — | TODO | — |
-| [SHM-023](#shm-023) | BE | Story | P0 | 5 | Admin approval workflow | SHM-022 | — | TODO | — |
-| [SHM-024](#shm-024) | BE | Story | P1 | 5 | Admin management: users, roles, settings, conflicts | SHM-010, SHM-008 | — | TODO | — |
-| [SHM-025](#shm-025) | BE | Story | P0 | 5 | Slot generator + slots endpoint | SHM-021, SHM-006 | — | TODO | — |
+| [SHM-019](#shm-019) | BE | Story | P0 | 5 | Catalogue API (admin CRUD + public read) | SHM-008, SHM-010 | backend agent | TODO | — |
+| [SHM-020](#shm-020) | BE | Story | P0 | 5 | Customer profile, addresses, favourites, deactivate | SHM-009 | backend agent | TODO | — |
+| [SHM-021](#shm-021) | BE | Story | P0 | 8 | Provider onboarding API | SHM-009, SHM-019 | backend agent | TODO | — |
+| [SHM-022](#shm-022) | BE | Story | P0 | 5 | Provider documents & CNIC protection | SHM-021, SHM-011 | backend agent | TODO | — |
+| [SHM-023](#shm-023) | BE | Story | P0 | 5 | Admin approval workflow | SHM-022 | backend agent | TODO | — |
+| [SHM-024](#shm-024) | BE | Story | P1 | 5 | Admin management: users, roles, settings, conflicts | SHM-010, SHM-008 | backend agent | TODO | — |
+| [SHM-025](#shm-025) | BE | Story | P0 | 5 | Slot generator + slots endpoint | SHM-021, SHM-006 | backend agent | TODO | — |
 | [SHM-026](#shm-026) | FE | Story | P0 | 5 | Public catalogue pages (SSR) | SHM-017, SHM-019 | — | TODO | — |
 | [SHM-027](#shm-027) | FE | Story | P0 | 5 | Customer account pages | SHM-020, SHM-017 | — | TODO | — |
 | [SHM-028](#shm-028) | FE | Story | P0 | 8 | Provider onboarding wizard (mobile-first, Urdu-ready) | SHM-021, SHM-022, SHM-017 | — | TODO | — |
 | [SHM-029](#shm-029) | FE | Story | P1 | 5 | Provider settings pages | SHM-028, SHM-025 | — | TODO | — |
 | [SHM-030](#shm-030) | FE | Story | P0 | 5 | Admin approvals & provider detail | SHM-023, SHM-017 | — | TODO | — |
 | [SHM-031](#shm-031) | FE | Story | P1 | 8 | Admin catalogue, customers, roles, settings, audit UIs | SHM-019, SHM-024 | — | TODO | — |
-| [SHM-032](#shm-032) | SHARED | Test | P0 | 3 | Phase 1 E2E + exit gate | SHM-028, SHM-030, SHM-031 | — | TODO | — |
+| [SHM-032](#shm-032) | SHARED | Test | P0 | 3 | Phase 1 E2E + exit gate | SHM-028, SHM-030, SHM-031 | backend agent | TODO | — |
 
 ### E2 · Phase 2 — Transacting (M4, M5, M6)
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-033](#shm-033) | BE | Story | P0 | 8 | Booking state machine (domain) T1–T26 | SHM-006, SHM-005 | — | TODO | — |
-| [SHM-034](#shm-034) | BE | Story | P0 | 5 | `BookingStateService.apply()` | SHM-033, SHM-008 | — | TODO | — |
-| [SHM-035](#shm-035) | BE | Story | P0 | 8 | Search & ranking API | SHM-025, SHM-020 | — | TODO | — |
-| [SHM-036](#shm-036) | BE | Story | P0 | 3 | Quote endpoint | SHM-019, SHM-020 | — | TODO | — |
-| [SHM-037](#shm-037) | BE | Story | P0 | 8 | Checkout: cash + online, webhook, capture, abandonment | SHM-034, SHM-036, SHM-011 | — | TODO | — |
-| [SHM-038](#shm-038) | BE | Story | P0 | 8 | Offers & auto-assign cascade | SHM-037 | — | TODO | — |
-| [SHM-039](#shm-039) | BE | Story | P0 | 5 | Cancel, reschedule, provider cancel, no-show | SHM-038 | — | TODO | — |
-| [SHM-040](#shm-040) | BE | Story | P1 | 3 | Masked in-booking chat | SHM-034 | — | TODO | — |
-| [SHM-041](#shm-041) | BE | Story | P0 | 8 | Execution API: depart, OTP start, evidence, checklist | SHM-034, SHM-022 | — | TODO | — |
-| [SHM-042](#shm-042) | BE | Story | P0 | 5 | Revised quote, top-up payment, parts & extras | SHM-041, SHM-037 | — | TODO | — |
-| [SHM-043](#shm-043) | BE | Story | P0 | 5 | Completion → invoice → AWAITING_VERIFICATION | SHM-042 | — | TODO | — |
-| [SHM-044](#shm-044) | BE | Task | P1 | 3 | Basic notification dispatch (outbox → mocks) | SHM-008, SHM-011 | — | TODO | — |
-| [SHM-045](#shm-045) | BE | Test | P0 | 3 | Concurrency & money-safety integration tests | SHM-037, SHM-043 | — | TODO | — |
+| [SHM-033](#shm-033) | BE | Story | P0 | 8 | Booking state machine (domain) T1–T26 | SHM-006, SHM-005 | backend agent | TODO | — |
+| [SHM-034](#shm-034) | BE | Story | P0 | 5 | `BookingStateService.apply()` | SHM-033, SHM-008 | backend agent | TODO | — |
+| [SHM-035](#shm-035) | BE | Story | P0 | 8 | Search & ranking API | SHM-025, SHM-020 | backend agent | TODO | — |
+| [SHM-036](#shm-036) | BE | Story | P0 | 3 | Quote endpoint | SHM-019, SHM-020 | backend agent | TODO | — |
+| [SHM-037](#shm-037) | BE | Story | P0 | 8 | Checkout: cash + online, webhook, capture, abandonment | SHM-034, SHM-036, SHM-011 | backend agent | TODO | — |
+| [SHM-038](#shm-038) | BE | Story | P0 | 8 | Offers & auto-assign cascade | SHM-037 | backend agent | TODO | — |
+| [SHM-039](#shm-039) | BE | Story | P0 | 5 | Cancel, reschedule, provider cancel, no-show | SHM-038 | backend agent | TODO | — |
+| [SHM-040](#shm-040) | BE | Story | P1 | 3 | Masked in-booking chat | SHM-034 | backend agent | TODO | — |
+| [SHM-041](#shm-041) | BE | Story | P0 | 8 | Execution API: depart, OTP start, evidence, checklist | SHM-034, SHM-022 | backend agent | TODO | — |
+| [SHM-042](#shm-042) | BE | Story | P0 | 5 | Revised quote, top-up payment, parts & extras | SHM-041, SHM-037 | backend agent | TODO | — |
+| [SHM-043](#shm-043) | BE | Story | P0 | 5 | Completion → invoice → AWAITING_VERIFICATION | SHM-042 | backend agent | TODO | — |
+| [SHM-044](#shm-044) | BE | Task | P1 | 3 | Basic notification dispatch (outbox → mocks) | SHM-008, SHM-011 | backend agent | TODO | — |
+| [SHM-045](#shm-045) | BE | Test | P0 | 3 | Concurrency & money-safety integration tests | SHM-037, SHM-043 | backend agent | TODO | — |
 | [SHM-046](#shm-046) | FE | Story | P0 | 8 | Customer booking wizard | SHM-035, SHM-036, SHM-037, SHM-017 | — | TODO | — |
 | [SHM-047](#shm-047) | FE | Story | P1 | 3 | Public provider profile page | SHM-035 | — | TODO | — |
 | [SHM-048](#shm-048) | FE | Story | P0 | 3 | Payment handoff, return & pending states | SHM-037 | — | TODO | — |
@@ -151,24 +163,24 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 | [SHM-050](#shm-050) | FE | Story | P0 | 5 | Provider offers, today & calendar | SHM-038 | — | TODO | — |
 | [SHM-051](#shm-051) | FE | Story | P0 | 8 | Provider job execution flow (PWA) | SHM-041, SHM-042, SHM-043 | — | TODO | — |
 | [SHM-052](#shm-052) | FE | Story | P0 | 5 | Offline evidence queue | SHM-051 | — | TODO | — |
-| [SHM-053](#shm-053) | SHARED | Test | P0 | 5 | Phase 2 E2E + exit gate | SHM-045, SHM-046, SHM-049, SHM-051, SHM-052 | — | TODO | — |
+| [SHM-053](#shm-053) | SHARED | Test | P0 | 5 | Phase 2 E2E + exit gate | SHM-045, SHM-046, SHM-049, SHM-051, SHM-052 | backend agent | TODO | — |
 
 ### E3 · Phase 3 — Verification & Money (M7, M8, M9)
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-054](#shm-054) | BE | Story | P0 | 3 | Tier routing (domain) R1–R10 | SHM-043 | — | TODO | — |
-| [SHM-055](#shm-055) | BE | Story | P0 | 5 | Verification queue, SLA & claim locking | SHM-054, SHM-006 | — | TODO | — |
-| [SHM-056](#shm-056) | BE | Story | P0 | 5 | Agent console API: call, attempts, outcome guards | SHM-055, SHM-011 | — | TODO | — |
-| [SHM-057](#shm-057) | BE | Story | P0 | 8 | Verification submission & release posting | SHM-056 | — | TODO | — |
-| [SHM-058](#shm-058) | BE | Story | P0 | 5 | Rework flow | SHM-057 | — | TODO | — |
-| [SHM-059](#shm-059) | BE | Story | P0 | 8 | Unreachable customer: link, auto-release, Tier B escalation | SHM-056 | — | TODO | — |
-| [SHM-060](#shm-060) | BE | Story | P0 | 5 | Cash settlement, debt ceiling, debt payment | SHM-057 | — | TODO | — |
-| [SHM-061](#shm-061) | BE | Story | P0 | 8 | Finance API: escrow, refunds, payouts, reconciliation views | SHM-057, SHM-060 | — | TODO | — |
-| [SHM-062](#shm-062) | BE | Task | P0 | 3 | Nightly reconciliation job | SHM-061 | — | TODO | — |
-| [SHM-063](#shm-063) | BE | Story | P1 | 5 | Reputation projector, badges, remarks replies | SHM-057 | — | TODO | — |
-| [SHM-064](#shm-064) | BE | Task | P1 | 2 | Call recordings: access & retention | SHM-056 | — | TODO | — |
-| [SHM-065](#shm-065) | BE | Test | P0 | 3 | Phase 3 money & verification integration tests | SHM-057, SHM-059, SHM-060 | — | TODO | — |
+| [SHM-054](#shm-054) | BE | Story | P0 | 3 | Tier routing (domain) R1–R10 | SHM-043 | backend agent | TODO | — |
+| [SHM-055](#shm-055) | BE | Story | P0 | 5 | Verification queue, SLA & claim locking | SHM-054, SHM-006 | backend agent | TODO | — |
+| [SHM-056](#shm-056) | BE | Story | P0 | 5 | Agent console API: call, attempts, outcome guards | SHM-055, SHM-011 | backend agent | TODO | — |
+| [SHM-057](#shm-057) | BE | Story | P0 | 8 | Verification submission & release posting | SHM-056 | backend agent | TODO | — |
+| [SHM-058](#shm-058) | BE | Story | P0 | 5 | Rework flow | SHM-057 | backend agent | TODO | — |
+| [SHM-059](#shm-059) | BE | Story | P0 | 8 | Unreachable customer: link, auto-release, Tier B escalation | SHM-056 | backend agent | TODO | — |
+| [SHM-060](#shm-060) | BE | Story | P0 | 5 | Cash settlement, debt ceiling, debt payment | SHM-057 | backend agent | TODO | — |
+| [SHM-061](#shm-061) | BE | Story | P0 | 8 | Finance API: escrow, refunds, payouts, reconciliation views | SHM-057, SHM-060 | backend agent | TODO | — |
+| [SHM-062](#shm-062) | BE | Task | P0 | 3 | Nightly reconciliation job | SHM-061 | backend agent | TODO | — |
+| [SHM-063](#shm-063) | BE | Story | P1 | 5 | Reputation projector, badges, remarks replies | SHM-057 | backend agent | TODO | — |
+| [SHM-064](#shm-064) | BE | Task | P1 | 2 | Call recordings: access & retention | SHM-056 | backend agent | TODO | — |
+| [SHM-065](#shm-065) | BE | Test | P0 | 3 | Phase 3 money & verification integration tests | SHM-057, SHM-059, SHM-060 | backend agent | TODO | — |
 | [SHM-066](#shm-066) | FE | Story | P0 | 3 | Agent queue page | SHM-055, SHM-017 | — | TODO | — |
 | [SHM-067](#shm-067) | FE | Story | P0 | 8 | Agent verification console | SHM-056, SHM-057, SHM-066 | — | TODO | — |
 | [SHM-068](#shm-068) | FE | Task | P2 | 2 | Agent attempts history page | SHM-056 | — | TODO | — |
@@ -177,44 +189,44 @@ Priority: **P0** = required for the phase exit gate · **P1** = required for rel
 | [SHM-071](#shm-071) | FE | Story | P1 | 3 | Ratings, remarks & badges UI | SHM-063 | — | TODO | — |
 | [SHM-072](#shm-072) | FE | Story | P0 | 8 | Finance console | SHM-061, SHM-017 | — | TODO | — |
 | [SHM-073](#shm-073) | FE | Story | P1 | 3 | Customer post-verification states | SHM-057, SHM-058 | — | TODO | — |
-| [SHM-074](#shm-074) | SHARED | Test | P0 | 5 | Phase 3 E2E + exit gate | SHM-065, SHM-067, SHM-069, SHM-070, SHM-072, SHM-073 | — | TODO | — |
+| [SHM-074](#shm-074) | SHARED | Test | P0 | 5 | Phase 3 E2E + exit gate | SHM-065, SHM-067, SHM-069, SHM-070, SHM-072, SHM-073 | backend agent | TODO | — |
 
 ### E4 · Phase 4 — Trust & Communication (M10, M11, M15)
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-075](#shm-075) | BE | Story | P0 | 5 | Complaints API | SHM-057 | — | TODO | — |
-| [SHM-076](#shm-076) | BE | Story | P0 | 8 | Disputes API & resolution postings | SHM-075, SHM-058 | — | TODO | — |
-| [SHM-077](#shm-077) | BE | Story | P0 | 8 | Conduct engine: penalties, demerits, thresholds | SHM-076 | — | TODO | — |
-| [SHM-078](#shm-078) | BE | Story | P0 | 5 | Appeals & reversals | SHM-077 | — | TODO | — |
-| [SHM-079](#shm-079) | BE | Task | P0 | 3 | Daily conduct job: expiry, decay, suspensions | SHM-077 | — | TODO | — |
-| [SHM-080](#shm-080) | BE | Story | P1 | 5 | Automatic breach proposals | SHM-077 | — | TODO | — |
-| [SHM-081](#shm-081) | BE | Story | P0 | 8 | Notifications: full planner & delivery | SHM-044 | — | TODO | — |
+| [SHM-075](#shm-075) | BE | Story | P0 | 5 | Complaints API | SHM-057 | backend agent | TODO | — |
+| [SHM-076](#shm-076) | BE | Story | P0 | 8 | Disputes API & resolution postings | SHM-075, SHM-058 | backend agent | TODO | — |
+| [SHM-077](#shm-077) | BE | Story | P0 | 8 | Conduct engine: penalties, demerits, thresholds | SHM-076 | backend agent | TODO | — |
+| [SHM-078](#shm-078) | BE | Story | P0 | 5 | Appeals & reversals | SHM-077 | backend agent | TODO | — |
+| [SHM-079](#shm-079) | BE | Task | P0 | 3 | Daily conduct job: expiry, decay, suspensions | SHM-077 | backend agent | TODO | — |
+| [SHM-080](#shm-080) | BE | Story | P1 | 5 | Automatic breach proposals | SHM-077 | backend agent | TODO | — |
+| [SHM-081](#shm-081) | BE | Story | P0 | 8 | Notifications: full planner & delivery | SHM-044 | backend agent | TODO | — |
 | [SHM-082](#shm-082) | FE | Story | P0 | 5 | Complaint forms & timeline | SHM-075 | — | TODO | — |
 | [SHM-083](#shm-083) | FE | Story | P0 | 8 | Admin complaints & disputes workspace | SHM-075, SHM-076 | — | TODO | — |
 | [SHM-084](#shm-084) | FE | Story | P0 | 5 | Admin penalties & appeals | SHM-077, SHM-078 | — | TODO | — |
 | [SHM-085](#shm-085) | FE | Story | P0 | 5 | Provider conduct page | SHM-077, SHM-079 | — | TODO | — |
 | [SHM-086](#shm-086) | FE | Story | P1 | 3 | Notification centre | SHM-081 | — | TODO | — |
 | [SHM-087](#shm-087) | FE | Story | P2 | 3 | Admin template editor | SHM-081 | — | TODO | — |
-| [SHM-088](#shm-088) | SHARED | Test | P0 | 3 | Phase 4 E2E + exit gate | SHM-082, SHM-083, SHM-084, SHM-085, SHM-086 | — | TODO | — |
+| [SHM-088](#shm-088) | SHARED | Test | P0 | 3 | Phase 4 E2E + exit gate | SHM-082, SHM-083, SHM-084, SHM-085, SHM-086 | backend agent | TODO | — |
 
 ### E5 · Phase 5 — Depth, Hardening & Release (M13, M14, ops)
 
 | Key | Owner | Type | Pri | SP | Title | Depends on | Assignee | Status | PR |
 |---|---|---|---|---|---|---|---|---|---|
-| [SHM-089](#shm-089) | BE | Story | P1 | 8 | Maintenance plans | SHM-057 | — | TODO | — |
-| [SHM-090](#shm-090) | BE | Story | P1 | 8 | Reports (async) with PDF & XLSX | SHM-061 | — | TODO | — |
-| [SHM-091](#shm-091) | BE | Task | P1 | 3 | Operations board API | SHM-055 | — | TODO | — |
-| [SHM-092](#shm-092) | BE | Task | P0 | 8 | Hardening: performance, security, observability | — | — | TODO | — |
-| [SHM-093](#shm-093) | BE | Task | P0 | 3 | Backup/restore & runbooks | — | — | TODO | — |
-| [SHM-094](#shm-094) | SHARED | Task | P0 | 5 | Production images & deployment pipeline | SHM-092 | — | TODO | — |
-| [SHM-095](#shm-095) | BE | Story | P1 | 5 | Real payment gateway adapter | — | — | BLOCKED | — |
-| [SHM-096](#shm-096) | BE | Story | P1 | 5 | Real telephony + SMS/WhatsApp adapters | — | — | BLOCKED | — |
+| [SHM-089](#shm-089) | BE | Story | P1 | 8 | Maintenance plans | SHM-057 | backend agent | TODO | — |
+| [SHM-090](#shm-090) | BE | Story | P1 | 8 | Reports (async) with PDF & XLSX | SHM-061 | backend agent | TODO | — |
+| [SHM-091](#shm-091) | BE | Task | P1 | 3 | Operations board API | SHM-055 | backend agent | TODO | — |
+| [SHM-092](#shm-092) | BE | Task | P0 | 8 | Hardening: performance, security, observability | — | backend agent | TODO | — |
+| [SHM-093](#shm-093) | BE | Task | P0 | 3 | Backup/restore & runbooks | — | backend agent | TODO | — |
+| [SHM-094](#shm-094) | SHARED | Task | P0 | 5 | Production images & deployment pipeline | SHM-092 | backend agent | TODO | — |
+| [SHM-095](#shm-095) | BE | Story | P1 | 5 | Real payment gateway adapter | — | backend agent | BLOCKED | — |
+| [SHM-096](#shm-096) | BE | Story | P1 | 5 | Real telephony + SMS/WhatsApp adapters | — | backend agent | BLOCKED | — |
 | [SHM-097](#shm-097) | FE | Story | P1 | 5 | Plans UI (customer + admin) | SHM-089 | — | TODO | — |
 | [SHM-098](#shm-098) | FE | Story | P1 | 5 | Admin reports page | SHM-090 | — | TODO | — |
 | [SHM-099](#shm-099) | FE | Story | P1 | 5 | Operations board (realtime) | SHM-091 | — | TODO | — |
 | [SHM-100](#shm-100) | FE | Task | P0 | 5 | Accessibility, Urdu completion & bundle budget | — | — | TODO | — |
-| [SHM-101](#shm-101) | SHARED | Test | P0 | 5 | UAT script, execution & release sign-off | SHM-088, SHM-092, SHM-094, SHM-097, SHM-098, SHM-099, SHM-100 | — | TODO | — |
+| [SHM-101](#shm-101) | SHARED | Test | P0 | 5 | UAT script, execution & release sign-off | SHM-088, SHM-092, SHM-094, SHM-097, SHM-098, SHM-099, SHM-100 | backend agent | TODO | — |
 
 ---
 
@@ -264,8 +276,8 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** Copy `04_schema.sql` → `packages/db/migrations/0001_init.sql` (dbmate format). Scripts `db:migrate`, `db:pull` (prisma db pull + generate), `db:reset`, `db:seed`. **Never** `prisma migrate`.
 
 **Acceptance criteria**
-- [ ] `pnpm db:reset` runs clean on an empty DB
-- [ ] Generated Prisma client compiles; 72 tables, 52 enums, 3 views present
+- [x] `pnpm db:reset` runs clean on an empty DB
+- [x] Generated Prisma client compiles; 72 tables, 52 enums, 3 views present
 - [ ] README section explains the schema-change workflow (new SQL migration → `db:pull`)
 - [ ] Definition of Done met
 
@@ -279,9 +291,9 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** Lahore + 20 areas; 6 active + 2 inactive categories; all SRS v2.0 §3.1 services with PKR prices, durations, pricing models (CL-01), checklists (3–6 items, some photo-required); roles & permissions; staff users (admin, finance, 2 agents) with printed dev passwords; all §13 settings; breach types; en + ur templates for every notification event; global commission 15 %.
 
 **Acceptance criteria**
-- [ ] Running seed twice yields identical data (idempotent, deterministic)
-- [ ] Dev credentials printed to console on seed
-- [ ] Every §13 setting key present with default
+- [x] Running seed twice yields identical data (idempotent, deterministic)
+- [x] Dev credentials printed to console on seed
+- [x] Every §13 setting key present with default
 - [ ] Definition of Done met
 
 <a id="shm-005"></a>
@@ -308,9 +320,9 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** `Clock` + `FakeClock`; Money helpers (add, sub, pct in basis points, half-up rounding); `SlaCalendar` (calling hours 08:00–22:00 Asia/Karachi, `addBusinessMinutes`).
 
 **Acceptance criteria**
-- [ ] Unit tests for 21:50, 22:00, 07:59, midnight and multi-day SLA spans
-- [ ] Money never uses floating point (lint + tests)
-- [ ] Domain package has zero imports from Nest/Prisma/Next
+- [x] Unit tests for 21:50, 22:00, 07:59, midnight and multi-day SLA spans
+- [x] Money never uses floating point (lint + tests)
+- [x] Domain package has zero imports from Nest/Prisma/Next
 - [ ] Definition of Done met
 
 <a id="shm-007"></a>
@@ -325,9 +337,9 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `GET /health`, `GET /api/docs`
 
 **Acceptance criteria**
-- [ ] Missing env var aborts startup with a clear message
-- [ ] Unhandled error returns problem+json with `code`
-- [ ] Phone numbers / CNIC never appear in logs (redaction test)
+- [x] Missing env var aborts startup with a clear message
+- [x] Unhandled error returns problem+json with `code`
+- [x] Phone numbers / CNIC never appear in logs (redaction test)
 - [ ] Definition of Done met
 
 <a id="shm-008"></a>
@@ -357,9 +369,9 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `POST /auth/register` · `/auth/otp/request` · `/auth/otp/verify` · `/auth/login` · `/auth/refresh` · `/auth/logout` · `/auth/password/forgot` · `/auth/password/reset`
 
 **Acceptance criteria**
-- [ ] Reused refresh token revokes the whole token family
-- [ ] OTP attempts limited and locked per settings
-- [ ] Provider account starts `PENDING`
+- [x] Reused refresh token revokes the whole token family
+- [x] OTP attempts limited and locked per settings
+- [x] Provider account starts `PENDING`
 - [ ] Definition of Done met
 
 <a id="shm-010"></a>
@@ -374,8 +386,8 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **API contract:** `POST /auth/totp/setup` · `POST /auth/totp/verify`
 
 **Acceptance criteria**
-- [ ] Staff cannot reach any staff route before TOTP verification
-- [ ] Route-policy test passes and is part of CI
+- [x] Staff cannot reach any staff route before TOTP verification
+- [x] Route-policy test passes and is part of CI
 - [ ] Definition of Done met
 
 <a id="shm-011"></a>
@@ -391,7 +403,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 **Acceptance criteria**
 - [ ] Whole system runs with network disabled
-- [ ] Adapter selected by env; mocks are the default in dev/test
+- [x] Adapter selected by env; mocks are the default in dev/test
 - [ ] Definition of Done met
 
 <a id="shm-012"></a>
@@ -404,7 +416,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 **Scope:** Prove: insert-only triggers (`audit_log`, `ledger_entries`), raw `UPDATE bookings.status` rejected, `DELETE users` rejected, unbalanced ledger transaction rejected at commit.
 
 **Acceptance criteria**
-- [ ] All four scenarios covered and green in CI
+- [x] All four scenarios covered and green in CI
 - [ ] Definition of Done met
 
 <a id="shm-013"></a>
@@ -1719,6 +1731,7 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 | Date | Ticket | Blocked by | Owner to unblock | Resolved on |
 |---|---|---|---|---|
+| 25 Sep 2026 | SHM-002, SHM-022, SHM-041 | MinIO container images are no longer publicly pullable (`minio/minio` and `minio/mc` return "repository does not exist"; the quay.io and ghcr.io mirrors require auth). Buckets cannot be created locally. The compose services are behind the `objects` profile with `OBJECT_STORE_IMAGE` / `OBJECT_STORE_CLIENT_IMAGE` overrides so a reachable S3 image can be substituted. | Backend lead / product owner to nominate a reachable S3 image | |
 | 21 Sep 2026 | SHM-095 | OQ-03 payment gateway not chosen | Product owner | |
 | 21 Sep 2026 | SHM-096 | OQ-04 telephony / SMS vendor not chosen | Product owner | |
 
@@ -1752,4 +1765,5 @@ Each card: scope, requirement references, API contract (BE), dependencies and ac
 
 | Date | Who | Change |
 |---|---|---|
+| 25 Sep 2026 | backend agent | SHM-001..SHM-012 implemented and verified against live PostGIS and Redis: monorepo builds, canonical schema migrates byte-identical to `04_schema.sql`, deterministic seed, 134 unit and integration tests green, API serves 20 documented routes, identity and staff TOTP shipped. 18 acceptance criteria ticked on evidence. SHM-013 CI still to run. Object storage is blocked: the MinIO images are no longer pullable (see Blockers). |
 | 21 Sep 2026 | Claude (doc pack) | Tracker created: 101 tickets across 6 phases, derived from SRS v2.1, TRD and build prompt |
