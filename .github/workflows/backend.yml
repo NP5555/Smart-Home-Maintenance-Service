@@ -1,23 +1,89 @@
-name: Backend Foundation
+name: backend
+
 on:
   pull_request:
   push:
     branches: [main]
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   quality:
+    name: lint, typecheck, unit tests, build
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-        with: { version: 10.14.0 }
       - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm lint
-      - run: pnpm typecheck
-      - run: pnpm test
-      - run: pnpm build
-      - run: docker compose -f infra/docker-compose.yml up -d postgis redis
-      - run: pnpm db:reset && pnpm test:integration
-      - if: always()
-        run: docker compose -f infra/docker-compose.yml down -v
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+
+  integration:
+    name: database invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    services:
+      postgis:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: smart_home
+          POSTGRES_USER: smart_home
+          POSTGRES_PASSWORD: smart_home
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U smart_home -d smart_home"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+    env:
+      NODE_ENV: test
+      DATABASE_URL: postgresql://smart_home:smart_home@localhost:5432/smart_home?schema=public
+      DIRECT_URL: postgresql://smart_home:smart_home@localhost:5432/smart_home?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-access-secret-value-with-32-characters
+      JWT_REFRESH_SECRET: ci-refresh-secret-value-with-32-characters
+      CSRF_SECRET: ci-csrf-secret-value-with-32-characters
+      OTP_PEPPER: ci-otp-pepper-value-with-32-characters
+      TOTP_ENCRYPTION_KEY: B1JvdTIta2V5LWZvci1jaS0zMi1ieXRlcy1sb25nISE=
+      MOCK_PAYMENT_WEBHOOK_SECRET: ci-webhook-secret-value
+      MINIO_ENDPOINT: http://localhost:9000
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      SMTP_URL: smtp://localhost:1025
+      DEV_INBOX_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run db:reset
+      - run: npm run test:integration
+
+  migration-fidelity:
+    name: 0001_init mirrors 04_schema.sql
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: assert the dbmate migration is a copy of the canonical schema
+        run: node -e "const fs=require('node:fs');const strip=t=>t.split(/\r?\n/).filter(l=>l.trim()!==''&&!l.trimStart().startsWith('--')).join('\n');const doc=strip(fs.readFileSync('smart-home-docs/04_schema.sql','utf8'));const mig=strip(fs.readFileSync('packages/db/migrations/0001_init.sql','utf8').split('-- migrate:down')[0].split('-- migrate:up')[1]);if(doc!==mig){console.error('0001_init.sql has drifted from 04_schema.sql');process.exit(1)}console.log('0001_init.sql matches 04_schema.sql')"
