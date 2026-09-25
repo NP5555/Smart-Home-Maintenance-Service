@@ -1,1 +1,31 @@
-{"name":"@smart-home/contracts","version":"0.0.0","private":true,"type":"module","main":"./dist/index.js","types":"./dist/index.d.ts","exports":{".":{"types":"./dist/index.d.ts","import":"./dist/index.js"}},"scripts":{"build":"tsc -p tsconfig.json","lint":"eslint src --max-warnings=0","typecheck":"tsc -p tsconfig.json --noEmit","test":"vitest run --passWithNoTests"},"dependencies":{"zod":"^3.25.76"},"devDependencies":{"@smart-home/config":"workspace:*","typescript":"^5.8.3","vitest":"^3.2.4"}}
+{
+  "name": "@smart-home/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./enums": { "types": "./dist/enums.d.ts", "import": "./dist/enums.js" },
+    "./errors": { "types": "./dist/errors.d.ts", "import": "./dist/errors.js" },
+    "./money": { "types": "./dist/money.d.ts", "import": "./dist/money.js" },
+    "./pagination": { "types": "./dist/pagination.d.ts", "import": "./dist/pagination.js" },
+    "./problem": { "types": "./dist/problem.d.ts", "import": "./dist/problem.js" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint src",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@smart-home/config": "*",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

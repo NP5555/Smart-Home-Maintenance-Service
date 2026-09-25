@@ -2,20 +2,34 @@ import { SetMetadata, createParamDecorator, type ExecutionContext } from '@nestj
 import type { FastifyRequest } from 'fastify';
 import { DomainError } from './domain-error.js';
 
-export const staffRoles = ['AGENT', 'FINANCE', 'ADMIN'] as const;
-export type StaffRole = typeof staffRoles[number];
-export type Policy = { public?: boolean; roles?: StaffRole[]; totpRequired?: boolean };
+export const STAFF_ROLES = ['AGENT', 'FINANCE', 'ADMIN'] as const;
+export type StaffRole = (typeof STAFF_ROLES)[number];
 
-export const POLICY_KEY = 'policy';
-export const PolicyDecorator = (policy: Policy) => SetMetadata(POLICY_KEY, policy);
-export const CurrentUser = createParamDecorator((_data: unknown, context: ExecutionContext) => {
-  const request = context.switchToHttp().getRequest<FastifyRequest & { user?: { id: string; roles: string[]; totpVerified: boolean } }>();
-  return request.user;
-});
+export const ALL_ROLES = ['CUSTOMER', 'PROVIDER', 'AGENT', 'FINANCE', 'ADMIN'] as const;
+export type ActorRole = (typeof ALL_ROLES)[number];
 
-export const policy = (request: FastifyRequest & { user?: { roles: string[]; totpVerified: boolean } }, required?: Policy): void => {
-  if (required?.public) return;
-  if (!request.user) throw new DomainError('UNAUTHENTICATED', 'Authentication is required');
-  if (required?.roles && !required.roles.some(role => request.user?.roles.includes(role))) throw new DomainError('FORBIDDEN', 'Role does not grant this policy');
-  if (required?.totpRequired && !request.user.totpVerified) throw new DomainError('TOTP_REQUIRED', 'TOTP verification is required');
+export type Policy = { public?: boolean; roles?: readonly ActorRole[]; totpRequired?: boolean };
+
+export const POLICY_METADATA_KEY = 'smart-home:policy';
+
+export type AuthenticatedPrincipal = { userId: string; roles: readonly ActorRole[]; totpVerified: boolean; sessionId: string };
+
+export type AuthenticatedRequest = FastifyRequest & { principal?: AuthenticatedPrincipal };
+
+export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(POLICY_METADATA_KEY, { public: true } satisfies Policy);
+
+export const PolicyDecorator = (policy: Policy): MethodDecorator & ClassDecorator => SetMetadata(POLICY_METADATA_KEY, policy);
+
+export const CurrentPrincipal = createParamDecorator((_data: unknown, context: ExecutionContext): AuthenticatedPrincipal | undefined =>
+  context.switchToHttp().getRequest<AuthenticatedRequest>().principal
+);
+
+export const enforcePolicy = (request: AuthenticatedRequest, required: Policy): void => {
+  if (required.public === true) return;
+  const principal = request.principal;
+  if (principal === undefined) throw new DomainError('UNAUTHENTICATED', 'Authentication is required');
+  if (required.roles !== undefined && required.roles.length > 0 && !required.roles.some(role => principal.roles.includes(role))) {
+    throw new DomainError('FORBIDDEN', 'Your role does not grant access to this resource');
+  }
+  if (required.totpRequired === true && !principal.totpVerified) throw new DomainError('TOTP_REQUIRED', 'Two factor verification is required for staff actions');
 };

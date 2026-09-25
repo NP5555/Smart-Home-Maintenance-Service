@@ -1,1 +1,26 @@
-{"name":"@smart-home/domain","version":"0.0.0","private":true,"type":"module","main":"./dist/index.js","types":"./dist/index.d.ts","exports":{".":{"types":"./dist/index.d.ts","import":"./dist/index.js"}},"scripts":{"build":"tsc -p tsconfig.json","lint":"eslint src test --max-warnings=0","typecheck":"tsc -p tsconfig.json --noEmit","test":"vitest run"},"devDependencies":{"@smart-home/config":"workspace:*","typescript":"^5.8.3","vitest":"^3.2.4"}}
+{
+  "name": "@smart-home/domain",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./clock": { "types": "./dist/clock.d.ts", "import": "./dist/clock.js" },
+    "./money": { "types": "./dist/money.d.ts", "import": "./dist/money.js" },
+    "./sla-calendar": { "types": "./dist/slaCalendar.d.ts", "import": "./dist/slaCalendar.js" }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "lint": "eslint src test",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@smart-home/config": "*",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

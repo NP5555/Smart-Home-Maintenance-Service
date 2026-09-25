@@ -1,1 +1,10 @@
-{"extends":"@smart-home/config/tsconfig.base.json","compilerOptions":{"outDir":"dist","rootDir":"src","types":[]},"include":["src/**/*.ts"]}
+{
+  "extends": "@smart-home/config/tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "types": [],
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts"]
+}

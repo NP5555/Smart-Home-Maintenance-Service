@@ -1,7 +1,24 @@
-export const loggerOptions = {
-  level: process.env.LOG_LEVEL ?? 'info',
-  redact: {
-    paths: ['phone', 'phone_e164', 'email', 'cnic', 'otp', 'code', 'password', 'token', 'refreshToken', 'accessToken', 'authorization', 'req.headers.authorization', 'req.body.phone', 'req.body.email', 'req.body.otp', 'req.body.code', 'req.body.password', 'address', '*.phone', '*.email', '*.cnic', '*.otp', '*.password', '*.token'],
-    censor: '[REDACTED]'
-  }
+import { randomUUID } from 'node:crypto';
+import type { IncomingMessage } from 'node:http';
+import { REDACTED_PATHS, REDACTION_CENSOR, REQUEST_ID_HEADER } from './common/redaction.js';
+
+const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
+
+export const resolveRequestId = (request: IncomingMessage): string => {
+  const header = request.headers[REQUEST_ID_HEADER];
+  const value = Array.isArray(header) ? header[0] : header;
+  if (typeof value === 'string' && REQUEST_ID_PATTERN.test(value)) return value;
+  return randomUUID();
 };
+
+export const buildLoggerOptions = (level: string, isProduction: boolean) => ({
+  level,
+  redact: { paths: REDACTED_PATHS, censor: REDACTION_CENSOR, remove: false },
+  base: isProduction ? undefined : { service: 'smart-home-api', env: 'development' },
+  formatters: {
+    level: (label: string) => ({ level: label })
+  },
+  serializers: {
+    err: (error: unknown) => (error instanceof Error ? { type: error.name, message: error.message, stack: error.stack } : { message: String(error) })
+  }
+});

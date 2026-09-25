@@ -1,41 +1,77 @@
-import { ArgumentsHost, Catch, ExceptionFilter, HttpException } from '@nestjs/common';
-import { FastifyReply, FastifyRequest } from 'fastify';
-import { errorCatalog, problemSchema, type ErrorCode } from '@smart-home/contracts';
+import { ArgumentsHost, Catch, HttpException, HttpStatus, Logger, type ExceptionFilter } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import type { FastifyReply, FastifyRequest } from 'fastify';
+import { PROBLEM_CONTENT_TYPE, buildProblem, errorCatalog, type ErrorCode, type FieldError } from '@smart-home/contracts';
+import { REQUEST_ID_HEADER } from './redaction.js';
 
-type ProblemBody = { code: ErrorCode; detail: string; errors: { path: string; code: string; message: string }[] };
+type ProblemBody = { code: ErrorCode; detail: string; errors: FieldError[] };
 
 @Catch()
 export class ProblemDetailsFilter implements ExceptionFilter {
+  private readonly logger = new Logger(ProblemDetailsFilter.name);
+
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
     const request = context.getRequest<FastifyRequest>();
     const reply = context.getResponse<FastifyReply>();
     const normalized = this.normalize(exception);
-    const catalog = errorCatalog[normalized.code];
-    const body = problemSchema.parse({
-      type: `https://smart-home.local/problems/${normalized.code.toLowerCase().replaceAll('_', '-')}`,
-      title: catalog.title,
-      status: catalog.status,
+    const body = buildProblem({
       code: normalized.code,
       detail: normalized.detail,
       instance: request.url,
       requestId: String(request.id),
       errors: normalized.errors
     });
-    void reply.status(catalog.status).type('application/problem+json').send(body);
+    if (normalized.code === 'INTERNAL_ERROR') {
+      this.logger.error({ err: exception, requestId: String(request.id), url: request.url, code: normalized.code });
+    }
+    void reply.status(body.status).type(PROBLEM_CONTENT_TYPE).send(body);
   }
 
   private normalize(exception: unknown): ProblemBody {
-    if (exception instanceof HttpException) {
-      const response = exception.getResponse();
-      if (typeof response === 'object' && response !== null) {
-        const value = response as { code?: ErrorCode; detail?: string; message?: string | string[]; errors?: ProblemBody['errors'] };
-        if (value.code && errorCatalog[value.code]) return { code: value.code, detail: value.detail ?? 'Request failed', errors: value.errors ?? [] };
-        if (value.errors) return { code: 'VALIDATION_FAILED', detail: 'Request validation failed', errors: value.errors };
-        const message = Array.isArray(value.message) ? value.message.join('; ') : value.message;
-        return { code: exception.getStatus() === 401 ? 'UNAUTHENTICATED' : 'BAD_REQUEST', detail: message ?? 'Request failed', errors: [] };
-      }
-    }
+    if (exception instanceof HttpException) return this.fromHttp(exception);
+    if (exception instanceof Prisma.PrismaClientKnownRequestError) return this.fromPrisma(exception);
     return { code: 'INTERNAL_ERROR', detail: 'An unexpected error occurred', errors: [] };
   }
+
+  private fromHttp(exception: HttpException): ProblemBody {
+    const status = exception.getStatus();
+    const response = exception.getResponse();
+    if (typeof response === 'string') return { code: this.codeForStatus(status), detail: response, errors: [] };
+    if (typeof response !== 'object' || response === null) return { code: this.codeForStatus(status), detail: exception.message, errors: [] };
+    const value = response as { code?: string; detail?: string; message?: string | string[]; errors?: FieldError[] };
+    if (typeof value.code === 'string' && value.code in errorCatalog) {
+      return { code: value.code as ErrorCode, detail: value.detail ?? exception.message, errors: value.errors ?? [] };
+    }
+    if (Array.isArray(value.errors)) return { code: 'VALIDATION_FAILED', detail: value.detail ?? 'Request validation failed', errors: value.errors };
+    const message = Array.isArray(value.message) ? value.message.join('; ') : value.message;
+    return { code: this.codeForStatus(status), detail: message ?? exception.message, errors: [] };
+  }
+
+  private fromPrisma(exception: Prisma.PrismaClientKnownRequestError): ProblemBody {
+    if (exception.code === 'P2002') return { code: 'CONFLICT', detail: 'The resource already exists', errors: [] };
+    if (exception.code === 'P2025') return { code: 'NOT_FOUND', detail: 'The resource was not found', errors: [] };
+    if (exception.code === 'P2003') return { code: 'CONFLICT', detail: 'A related resource is missing', errors: [] };
+    return { code: 'INTERNAL_ERROR', detail: 'A database error occurred', errors: [] };
+  }
+
+  private codeForStatus(status: number): ErrorCode {
+    if (status === HttpStatus.BAD_REQUEST) return 'BAD_REQUEST';
+    if (status === HttpStatus.UNAUTHORIZED) return 'UNAUTHENTICATED';
+    if (status === HttpStatus.FORBIDDEN) return 'FORBIDDEN';
+    if (status === HttpStatus.NOT_FOUND) return 'NOT_FOUND';
+    if (status === HttpStatus.CONFLICT) return 'CONFLICT';
+    if (status === HttpStatus.UNPROCESSABLE_ENTITY) return 'VALIDATION_FAILED';
+    if (status === HttpStatus.TOO_MANY_REQUESTS) return 'RATE_LIMITED';
+    if (status === HttpStatus.LOCKED) return 'OTP_LOCKED';
+    if (status === HttpStatus.BAD_GATEWAY) return 'ADAPTER_UNAVAILABLE';
+    if (status >= 500) return 'INTERNAL_ERROR';
+    return 'BAD_REQUEST';
+  }
 }
+
+export const requestIdOf = (request: FastifyRequest): string => {
+  const header = request.headers[REQUEST_ID_HEADER];
+  const value = Array.isArray(header) ? header[0] : header;
+  return typeof value === 'string' && value.length > 0 ? value : String(request.id);
+};

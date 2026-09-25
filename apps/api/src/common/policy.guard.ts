@@ -1,31 +1,29 @@
-import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
+import { CanActivate, ExecutionContext, Inject, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
-import type { FastifyRequest } from 'fastify';
 import { DomainError } from './domain-error.js';
-import { POLICY_KEY, policy, type Policy } from './policy.js';
-import { TokenService } from '../identity/token.service.js';
+import { ACCESS_TOKEN_VERIFIER, type AccessTokenVerifier } from './access-token.port.js';
+import { POLICY_METADATA_KEY, enforcePolicy, type AuthenticatedRequest, type Policy } from './policy.js';
 
-export type AuthenticatedRequest = FastifyRequest & { user?: { id: string; roles: string[]; totpVerified: boolean; sessionId: string } };
+export const POLICY_REQUIRED_MESSAGE = 'Route is missing a @Policy() or @Public() declaration';
 
 @Injectable()
 export class PolicyGuard implements CanActivate {
-  constructor(private readonly reflector: Reflector, private readonly tokens: TokenService) {}
+  constructor(
+    private readonly reflector: Reflector,
+    @Inject(ACCESS_TOKEN_VERIFIER) private readonly tokens: AccessTokenVerifier
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const required = this.reflector.getAllAndOverride<Policy | undefined>(POLICY_KEY, [context.getHandler(), context.getClass()]);
-    if (!required) throw new DomainError('INTERNAL_ERROR', 'Route has no policy declaration');
-    if (required.public) return true;
+    if (context.getType() !== 'http') return true;
+    const required = this.reflector.getAllAndOverride<Policy | undefined>(POLICY_METADATA_KEY, [context.getHandler(), context.getClass()]);
+    if (required === undefined) throw new DomainError('INTERNAL_ERROR', POLICY_REQUIRED_MESSAGE);
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
-    const authorization = request.headers.authorization;
-    if (!authorization?.startsWith('Bearer ')) throw new DomainError('UNAUTHENTICATED', 'Bearer access token is required');
-    try {
-      const claims = await this.tokens.verifyAccess(authorization.slice(7));
-      request.user = { id: claims.sub, roles: claims.roles, totpVerified: claims.totp, sessionId: claims.sid };
-      policy(request, required);
-      return true;
-    } catch (error) {
-      if (error instanceof DomainError) throw error;
-      throw new DomainError('UNAUTHENTICATED', 'Access token is invalid or expired');
-    }
+    if (required.public === true) return true;
+    const header = request.headers.authorization;
+    if (header === undefined || !header.startsWith('Bearer ')) throw new DomainError('UNAUTHENTICATED', 'A bearer access token is required');
+    const claims = await this.tokens.verify(header.slice('Bearer '.length).trim());
+    request.principal = { userId: claims.userId, sessionId: claims.sessionId, roles: claims.roles, totpVerified: claims.totpVerified };
+    enforcePolicy(request, required);
+    return true;
   }
 }

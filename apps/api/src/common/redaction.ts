@@ -1,0 +1,42 @@
+export const REDACTED_PATHS = [
+  'req.headers.authorization',
+  'req.headers.cookie',
+  'req.headers["x-api-key"]',
+  'headers.authorization',
+  'headers.cookie',
+  '*.password',
+  '*.passwordHash',
+  '*.password_hash',
+  '*.token',
+  '*.accessToken',
+  '*.refreshToken',
+  '*.refresh_token',
+  '*.csrfToken',
+  '*.otp',
+  '*.code',
+  '*.phone',
+  '*.phone_e164',
+  '*.phoneE164',
+  '*.email',
+  '*.cnic',
+  '*.cnicNumber',
+  '*.address',
+  '*.line1',
+  '*.secret',
+  'req.body.password',
+  'req.body.otp',
+  'req.body.code',
+  'req.body.phone',
+  'req.body.email',
+  'req.body.cnic',
+  'body.password',
+  'body.otp',
+  'body.code',
+  'body.phone',
+  'body.email',
+  'body.cnic'
+];
+
+export const REDACTION_CENSOR = '[REDACTED]';
+
+export const REQUEST_ID_HEADER = 'x-request-id';

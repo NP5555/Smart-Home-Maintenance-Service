@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./tsconfig.base.json": "./tsconfig.base.json",
-    "./eslint": "./eslint.config.js"
+    "./eslint": "./eslint.config.js",
+    "./prettier": "./prettier.config.js"
   }
 }

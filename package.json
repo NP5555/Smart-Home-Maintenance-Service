@@ -1,20 +1,35 @@
 {
   "name": "smart-home-maintenance-service",
+  "version": "0.0.0",
   "private": true,
+  "description": "Smart Home Maintenance Services — backend foundation (npm workspaces + Turborepo + NestJS 11 / Fastify)",
   "type": "module",
-  "packageManager": "pnpm@10.14.0",
-  "engines": { "node": ">=22" },
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "packages/config",
+    "packages/contracts",
+    "packages/domain",
+    "packages/db",
+    "apps/api"
+  ],
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev --parallel",
     "lint": "turbo lint",
     "typecheck": "turbo typecheck",
     "test": "turbo test",
-    "test:integration": "pnpm --filter @smart-home/api test:integration",
-    "db:migrate": "pnpm --filter @smart-home/db db:migrate",
-    "db:pull": "pnpm --filter @smart-home/db db:pull",
-    "db:reset": "pnpm --filter @smart-home/db db:reset",
-    "db:seed": "pnpm --filter @smart-home/db db:seed"
+    "test:integration": "npm run test:integration --workspace @smart-home/api",
+    "format": "prettier --write \"**/*.{ts,json,md,yml}\"",
+    "format:check": "prettier --check \"**/*.{ts,json,md,yml}\"",
+    "db:migrate": "npm run db:migrate --workspace @smart-home/db",
+    "db:new": "npm run db:new --workspace @smart-home/db",
+    "db:pull": "npm run db:pull --workspace @smart-home/db",
+    "db:reset": "npm run db:reset --workspace @smart-home/db",
+    "db:seed": "npm run db:seed --workspace @smart-home/db",
+    "infra:up": "docker compose -f infra/docker-compose.yml up -d",
+    "infra:down": "docker compose -f infra/docker-compose.yml down -v"
   },
   "devDependencies": {
     "@eslint/js": "^9.31.0",

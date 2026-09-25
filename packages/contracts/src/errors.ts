@@ -1,8 +1,37 @@
 import { z } from 'zod';
 
+export const PROBLEM_CONTENT_TYPE = 'application/problem+json';
+export const PROBLEM_BASE_URI = 'https://smart-home.local/problems';
+
 export const errorCodeSchema = z.enum([
-  'BAD_REQUEST', 'UNAUTHENTICATED', 'FORBIDDEN', 'NOT_FOUND', 'CONFLICT', 'IDEMPOTENCY_REQUIRED', 'IDEMPOTENCY_KEY_REUSED', 'IDEMPOTENCY_IN_PROGRESS', 'VALIDATION_FAILED', 'RATE_LIMITED', 'OTP_INVALID', 'OTP_LOCKED', 'INVALID_CREDENTIALS', 'REFRESH_REUSE_DETECTED', 'TOTP_REQUIRED', 'TOTP_INVALID', 'OUTSIDE_CALLING_HOURS', 'ILLEGAL_TRANSITION', 'SLOT_TAKEN', 'CONFLICT_OF_INTEREST', 'DEBT_BLOCKED', 'EXTERNAL_ADAPTER_FAILED', 'INTERNAL_ERROR'
+  'BAD_REQUEST',
+  'UNAUTHENTICATED',
+  'FORBIDDEN',
+  'NOT_FOUND',
+  'CONFLICT',
+  'IDEMPOTENCY_REQUIRED',
+  'IDEMPOTENCY_KEY_REUSED',
+  'IDEMPOTENCY_IN_PROGRESS',
+  'VALIDATION_FAILED',
+  'RATE_LIMITED',
+  'OTP_INVALID',
+  'OTP_LOCKED',
+  'INVALID_CREDENTIALS',
+  'REFRESH_REUSE_DETECTED',
+  'TOTP_REQUIRED',
+  'TOTP_INVALID',
+  'OUTSIDE_CALLING_HOURS',
+  'ILLEGAL_TRANSITION',
+  'SLOT_TAKEN',
+  'CONFLICT_OF_INTEREST',
+  'DEBT_BLOCKED',
+  'PAYMENT_NOT_CAPTURABLE',
+  'VERIFICATION_NOT_RELEASE_PERMITTING',
+  'UPLOAD_REJECTED',
+  'ADAPTER_UNAVAILABLE',
+  'INTERNAL_ERROR'
 ]);
+
 export type ErrorCode = z.infer<typeof errorCodeSchema>;
 
 export const errorCatalog: Record<ErrorCode, { title: string; status: number }> = {
@@ -27,6 +56,17 @@ export const errorCatalog: Record<ErrorCode, { title: string; status: number }> 
   SLOT_TAKEN: { title: 'Slot Taken', status: 409 },
   CONFLICT_OF_INTEREST: { title: 'Conflict of Interest', status: 403 },
   DEBT_BLOCKED: { title: 'Debt Blocked', status: 409 },
-  EXTERNAL_ADAPTER_FAILED: { title: 'External Adapter Failed', status: 502 },
+  PAYMENT_NOT_CAPTURABLE: { title: 'Payment Not Capturable', status: 409 },
+  VERIFICATION_NOT_RELEASE_PERMITTING: { title: 'Verification Does Not Permit Release', status: 409 },
+  UPLOAD_REJECTED: { title: 'Upload Rejected', status: 422 },
+  ADAPTER_UNAVAILABLE: { title: 'Adapter Unavailable', status: 502 },
   INTERNAL_ERROR: { title: 'Internal Server Error', status: 500 }
 };
+
+export const errorCodeValues = errorCodeSchema.options;
+
+export const problemTypeFor = (code: ErrorCode): string => `${PROBLEM_BASE_URI}/${code.toLowerCase().replaceAll('_', '-')}`;
+
+export const statusForCode = (code: ErrorCode): number => errorCatalog[code].status;
+
+export const titleForCode = (code: ErrorCode): string => errorCatalog[code].title;

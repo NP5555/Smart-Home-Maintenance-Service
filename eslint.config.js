@@ -1,1 +1,3 @@
-export { default } from './packages/config/eslint.config.js';
+import config from '@smart-home/config/eslint';
+
+export default config;

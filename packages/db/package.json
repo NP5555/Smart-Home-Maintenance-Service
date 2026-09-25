@@ -3,25 +3,31 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "exports": {
+    "./client": "./dist/client.js",
+    "./prisma": "./prisma"
+  },
   "scripts": {
-    "db:migrate": "dbmate -d migrations up",
-    "db:new": "dbmate -d migrations new",
+    "db:migrate": "dbmate --migrations-dir migrations --no-dump-schema up",
+    "db:new": "dbmate --migrations-dir migrations --no-dump-schema new",
+    "db:status": "dbmate --migrations-dir migrations --no-dump-schema status",
     "db:pull": "prisma db pull --schema prisma/schema.prisma && prisma generate --schema prisma/schema.prisma",
-    "db:reset": "dbmate -d migrations drop --force && dbmate -d migrations up && pnpm db:seed",
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:reset": "npm run db:drop && npm run db:migrate && npm run db:pull && npm run db:seed",
+    "db:drop": "dbmate --migrations-dir migrations --no-dump-schema drop --force",
     "db:seed": "tsx seed/seed.ts",
-    "build": "tsc -p tsconfig.json --noEmit",
-    "lint": "eslint seed --max-warnings=0",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "build": "tsc -p tsconfig.json",
+    "lint": "eslint src seed",
+    "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@prisma/client": "6.12.0",
-    "argon2": "^0.43.0"
+    "@prisma/client": "6.12.0"
   },
   "devDependencies": {
-    "@smart-home/config": "workspace:*",
+    "@smart-home/config": "*",
     "@types/node": "^22.16.4",
-    "dbmate": "^2.27.0",
+    "dbmate": "^2.36.0",
     "prisma": "6.12.0",
     "tsx": "^4.20.3",
     "typescript": "^5.8.3",
