@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
+import type { IncomingMessage } from 'node:http';
 import { RequestMethod } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
@@ -19,7 +20,7 @@ export const OPENAPI_PATH = 'api/docs';
 export const createHttpAdapter = (logLevel: string, isProduction: boolean): FastifyAdapter =>
   new FastifyAdapter({
     logger: buildLoggerOptions(logLevel, isProduction),
-    genReqId: request => resolveRequestId(request.headers),
+    genReqId: (request: IncomingMessage) => resolveRequestId(request.headers),
     bodyLimit: 1_048_576,
     trustProxy: true,
     disableRequestLogging: false

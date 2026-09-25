@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Reflector } from '@nestjs/core';
-import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import type { ExecutionContext } from '@nestjs/common';
 import { POLICY_METADATA_KEY, enforcePolicy, type AuthenticatedPrincipal, type AuthenticatedRequest, type Policy } from '../src/common/policy.js';
 import { PolicyGuard } from '../src/common/policy.guard.js';
 import { DomainError } from '../src/common/domain-error.js';
@@ -11,41 +11,37 @@ const requestWith = (value: AuthenticatedPrincipal | undefined): AuthenticatedRe
 
 const handler = (): void => undefined;
 
-const executionContext = (policy: Policy | undefined, request: unknown) => ({
-  getType: () => 'http',
-  getHandler: () => handler,
-  getClass: () => class Controller {},
-  switchToHttp: () => ({ getRequest: () => request })
-});
+const contextFor = (policy: Policy | undefined, request: unknown): ExecutionContext =>
+  ({
+    getType: () => 'http',
+    getHandler: () => handler,
+    getClass: () => class Controller {},
+    switchToHttp: () => ({ getRequest: () => request })
+  }) as unknown as ExecutionContext;
 
 const guard = (verifier: AccessTokenVerifier = new UnconfiguredAccessTokenVerifier()): PolicyGuard => new PolicyGuard(new Reflector(), verifier);
 
 describe('PolicyGuard', () => {
   it('NFR-SE-02: fails closed when a route declares no policy', async () => {
-    const { context } = executionContext(undefined, {});
-    await expect(guard().canActivate(context as never)).rejects.toThrow(DomainError);
+    await expect(guard().canActivate(contextFor(undefined, {}))).rejects.toThrow(DomainError);
   });
 
   it('lets explicitly public routes through without a token', async () => {
-    const { context } = executionContext({ public: true }, {});
-    await expect(guard().canActivate(context as never)).resolves.toBe(true);
+    await expect(guard().canActivate(contextFor({ public: true }, {}))).resolves.toBe(true);
   });
 
   it('rejects a missing bearer token on a protected route', async () => {
-    const { context } = executionContext({ roles: ['ADMIN'] }, { headers: {} });
-    await expect(guard().canActivate(context as never)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    await expect(guard().canActivate(contextFor({ roles: ['ADMIN'] }, { headers: {} }))).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 
   it('rejects a token that no adapter can verify while identity is deferred', async () => {
-    const { context } = executionContext({ roles: ['ADMIN'] }, { headers: { authorization: 'Bearer whatever' } });
-    await expect(guard().canActivate(context as never)).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
+    await expect(guard().canActivate(contextFor({ roles: ['ADMIN'] }, { headers: { authorization: 'Bearer whatever' } }))).rejects.toMatchObject({ code: 'UNAUTHENTICATED' });
   });
 
   it('attaches the principal from the verifier before evaluating roles', async () => {
-    const verifier: AccessTokenVerifier = { verify: async () => ({ userId: 'user-1', sessionId: 'session-9', roles: ['ADMIN'], totpVerified: true }) };
+    const verifier: AccessTokenVerifier = { verify: () => Promise.resolve({ userId: 'user-1', sessionId: 'session-9', roles: ['ADMIN'] as const, totpVerified: true }) };
     const request: AuthenticatedRequest = { headers: { authorization: 'Bearer good' } } as AuthenticatedRequest;
-    const { context } = executionContext({ roles: ['ADMIN'], totpRequired: true }, request);
-    await expect(guard(verifier).canActivate(context as never)).resolves.toBe(true);
+    await expect(guard(verifier).canActivate(contextFor({ roles: ['ADMIN'], totpRequired: true }, request))).resolves.toBe(true);
     expect(request.principal?.roles).toEqual(['ADMIN']);
   });
 });
@@ -67,11 +63,8 @@ describe('enforcePolicy', () => {
   });
 });
 
-describe('global providers', () => {
-  it('registers exactly one filter, guard and interceptor', () => {
-    expect(APP_FILTER).toBeTypeOf('string');
-    expect(APP_GUARD).toBeTypeOf('string');
-    expect(APP_INTERCEPTOR).toBeTypeOf('string');
+describe('policy metadata', () => {
+  it('namespaces the policy metadata key so it cannot collide with another decorator', () => {
     expect(POLICY_METADATA_KEY).toBe('smart-home:policy');
   });
 });

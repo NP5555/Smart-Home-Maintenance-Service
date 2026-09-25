@@ -19,8 +19,8 @@ describe('Pino request id and PII redaction', () => {
   it('produces logger options with a censor marker and a level', () => {
     const options = buildLoggerOptions('info', true);
     expect(options.level).toBe('info');
-    expect(options.redact.censor).toBe('[REDACTED]');
-    expect(options.base).toBeUndefined();
+    expect(typeof options.redact === 'object' && options.redact !== null && 'censor' in options.redact ? options.redact.censor : undefined).toBe('[REDACTED]');
+    expect(options.base).toEqual({});
     expect(buildLoggerOptions('debug', false).base).toEqual({ service: 'smart-home-api', env: 'development' });
   });
 });

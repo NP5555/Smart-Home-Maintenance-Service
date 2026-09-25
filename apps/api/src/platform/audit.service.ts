@@ -1,4 +1,5 @@
-import { Injectable, Optional, type ModuleRef } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
+import { type ModuleRef } from '@nestjs/core';
 import { Prisma } from '@prisma/client';
 import type { ActorRole } from '../common/policy.js';
 import { PrismaService } from '../database/prisma.service.js';

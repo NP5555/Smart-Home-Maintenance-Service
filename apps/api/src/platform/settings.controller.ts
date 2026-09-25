@@ -2,7 +2,8 @@ import { Body, Controller, Get, Param, Put, Query } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { z } from 'zod';
 import { Prisma } from '@prisma/client';
-import { PolicyDecorator } from '../common/policy.js';
+import { PolicyDecorator, CurrentPrincipal, type AuthenticatedPrincipal } from '../common/policy.js';
+import { DomainError } from '../common/domain-error.js';
 import { parseWith } from '../common/validation.js';
 import { SettingsService } from './settings.service.js';
 
@@ -44,9 +45,10 @@ export class SettingsController {
   @Put(':key')
   @PolicyDecorator({ roles: ['ADMIN'], totpRequired: true })
   @ApiOperation({ summary: 'Update one setting; the change is audited and the cache is invalidated across instances' })
-  async update(@Param('key') key: string, @Body() body: unknown) {
+  async update(@Param('key') key: string, @Body() body: unknown, @CurrentPrincipal() principal: AuthenticatedPrincipal) {
     const parsedKey = parseWith(settingKeySchema, key);
     const { value } = parseWith(settingUpdateSchema, body);
+    if (principal === undefined) throw new DomainError('UNAUTHENTICATED', 'An authenticated administrator is required');
     return this.settings.set(parsedKey, value as Prisma.InputJsonValue, principal.userId);
   }
 }
