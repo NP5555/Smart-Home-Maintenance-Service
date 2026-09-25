@@ -20,6 +20,7 @@ export const startWorker = async (): Promise<void> => {
   for (const name of new Set(REPEATABLE_JOBS.map(job => job.queue))) {
     await queues.startWorker(name);
   }
+  process.stdout.write(`worker ready (node ${process.env.NODE_ENV ?? 'development'}, log level ${environment.values.LOG_LEVEL})\n`);
   const shutdown = async (signal: string): Promise<void> => {
     context.get(OutboxDispatcher).stop();
     await settings.stop();

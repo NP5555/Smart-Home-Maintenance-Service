@@ -1,15 +1,27 @@
 import { randomUUID } from 'node:crypto';
 import type { IncomingHttpHeaders } from 'node:http';
-import type { FastifyRequest } from 'fastify';
 import type { LoggerOptions } from 'pino';
 import { REDACTED_PATHS, REDACTION_CENSOR, REQUEST_ID_HEADER } from './common/redaction.js';
 
 const REQUEST_ID_PATTERN = /^[A-Za-z0-9._:-]{1,128}$/;
 
+const headerValue = (source: Record<string, unknown>, header: string): string | undefined => {
+  const lower = header.toLowerCase();
+  const bags = [source, (source.headers as Record<string, unknown> | undefined) ?? undefined];
+  for (const bag of bags) {
+    if (!bag) continue;
+    for (const [key, value] of Object.entries(bag)) {
+      if (key.toLowerCase() !== lower) continue;
+      const single = Array.isArray(value) ? value[0] : value;
+      if (typeof single === 'string') return single;
+    }
+  }
+  return undefined;
+};
+
 export const resolveRequestId = (headers: Pick<IncomingHttpHeaders, 'x-request-id'> | Record<string, unknown>): string => {
-  const header = headers[REQUEST_ID_HEADER];
-  const value = Array.isArray(header) ? header[0] : header;
-  if (typeof value === 'string' && REQUEST_ID_PATTERN.test(value)) return value;
+  const value = headerValue(headers, REQUEST_ID_HEADER);
+  if (value !== undefined && REQUEST_ID_PATTERN.test(value)) return value;
   return randomUUID();
 };
 

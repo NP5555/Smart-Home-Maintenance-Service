@@ -47,7 +47,18 @@ const closeAt = (wall: WallTime): WallTime => ({ ...wall, hour: BUSINESS_DAY_END
 
 const minutesOf = (wall: WallTime): number => wall.hour * 60 + wall.minute;
 
+/**
+ * Actionable window per BR-13: work may start and outbound contact may happen
+ * from 08:00 up to but not including 22:00. The accrual window is the closed
+ * interval [08:00, 22:00] because CL-20 pauses the SLA clock *at* 22:00, so a
+ * deadline is allowed to land exactly on the closing instant.
+ */
 export const isWithinBusinessHours = (instant: Date): boolean => {
+  const minutes = minutesOf(wallTimeIn(instant));
+  return minutes >= OPEN_MINUTE_OF_DAY && minutes < CLOSE_MINUTE_OF_DAY;
+};
+
+export const isBusinessInstant = (instant: Date): boolean => {
   const minutes = minutesOf(wallTimeIn(instant));
   return minutes >= OPEN_MINUTE_OF_DAY && minutes <= CLOSE_MINUTE_OF_DAY;
 };
@@ -62,7 +73,7 @@ export const nextBusinessInstant = (instant: Date): Date => {
 export const previousBusinessInstant = (instant: Date): Date => {
   const wall = wallTimeIn(instant);
   if (isWithinBusinessHours(instant)) return new Date(instant);
-  if (minutesOf(wall) > CLOSE_MINUTE_OF_DAY) return instantFromWallTime(closeAt(wall));
+  if (minutesOf(wall) >= CLOSE_MINUTE_OF_DAY) return instantFromWallTime(closeAt(wall));
   return instantFromWallTime(closeAt(wallTimeFromDay(wall, -1)));
 };
 
@@ -102,6 +113,7 @@ export const businessMinutesBetween = (from: Date, to: Date): number => {
 export const SlaCalendar = {
   addBusinessMinutes,
   businessMinutesBetween,
+  isBusinessInstant,
   isWithinBusinessHours,
   nextBusinessInstant,
   previousBusinessInstant,

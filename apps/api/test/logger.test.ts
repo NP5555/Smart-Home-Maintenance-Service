@@ -4,9 +4,14 @@ import { REDACTED_PATHS } from '../src/common/redaction.js';
 
 describe('Pino request id and PII redaction', () => {
   it('reuses a well formed inbound request id and mints one otherwise', () => {
-    expect(resolveRequestId({ headers: { 'x-request-id': 'trace-abc-123' } } as never)).toBe('trace-abc-123');
-    expect(resolveRequestId({ headers: {} } as never)).toMatch(/^[0-9a-f-]{36}$/);
-    expect(resolveRequestId({ headers: { 'x-request-id': 'a'.repeat(200) } } as never)).toMatch(/^[0-9a-f-]{36}$/);
+    expect(resolveRequestId({ headers: { 'x-request-id': 'trace-abc-123' } })).toBe('trace-abc-123');
+    expect(resolveRequestId({ 'x-request-id': 'trace-abc-123' })).toBe('trace-abc-123');
+    expect(resolveRequestId({ 'X-Request-Id': 'trace-abc-123' })).toBe('trace-abc-123');
+    expect(resolveRequestId({ headers: { 'x-request-id': ['trace-abc-123'] } })).toBe('trace-abc-123');
+    expect(resolveRequestId({ headers: {} })).toMatch(/^[0-9a-f-]{36}$/);
+    expect(resolveRequestId({ headers: { 'x-request-id': 'a'.repeat(200) } })).toMatch(/^[0-9a-f-]{36}$/);
+    expect(resolveRequestId({ headers: { 'x-request-id': 'has spaces' } })).toMatch(/^[0-9a-f-]{36}$/);
+    expect(resolveRequestId({ headers: { 'x-request-id': 42 } })).toMatch(/^[0-9a-f-]{36}$/);
   });
 
   it('NFR-MA-03: redacts phone, email, cnic, otp, password, tokens and addresses', () => {
