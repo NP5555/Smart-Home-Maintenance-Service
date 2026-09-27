@@ -1,8 +1,9 @@
 import { ArgumentsHost, Catch, HttpException, Logger, type ExceptionFilter } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { Request, Response } from 'express';
 import { PROBLEM_CONTENT_TYPE, buildProblem, errorCatalog, type ErrorCode, type FieldError } from '@smart-home/contracts';
 import { REQUEST_ID_HEADER } from './redaction.js';
+import { isUniqueViolation } from './unique-violation.js';
 
 type ProblemBody = { code: ErrorCode; detail: string; errors: FieldError[] };
 
@@ -12,26 +13,46 @@ export class ProblemDetailsFilter implements ExceptionFilter {
 
   catch(exception: unknown, host: ArgumentsHost): void {
     const context = host.switchToHttp();
-    const request = context.getRequest<FastifyRequest>();
-    const reply = context.getResponse<FastifyReply>();
+    const request = context.getRequest<Request>();
+    const response = context.getResponse<Response>();
+    const requestId = requestIdOf(request);
     const normalized = this.normalize(exception);
     const body = buildProblem({
       code: normalized.code,
       detail: normalized.detail,
-      instance: request.url,
-      requestId: String(request.id),
+      instance: request.originalUrl,
+      requestId,
       errors: normalized.errors
     });
     if (normalized.code === 'INTERNAL_ERROR') {
-      this.logger.error({ err: exception, requestId: String(request.id), url: request.url, code: normalized.code });
+      this.logger.error({ err: exception, requestId, url: request.originalUrl, code: normalized.code });
     }
-    void reply.status(body.status).type(PROBLEM_CONTENT_TYPE).send(body);
+    if (response.headersSent) return;
+    response.status(body.status).type(PROBLEM_CONTENT_TYPE).json(body);
   }
 
   private normalize(exception: unknown): ProblemBody {
     if (exception instanceof HttpException) return this.fromHttp(exception);
     if (exception instanceof Prisma.PrismaClientKnownRequestError) return this.fromPrisma(exception);
+    const transport = this.fromTransportError(exception);
+    if (transport !== undefined) return transport;
     return { code: 'INTERNAL_ERROR', detail: 'An unexpected error occurred', errors: [] };
+  }
+
+  /**
+   * The body parsers reject a request before it ever reaches a controller, and
+   * they signal it with a plain Error carrying a `type` and a status rather than
+   * an HttpException. Fastify answered those itself, so without this branch an
+   * oversized or malformed body would have become a 500 where the API used to
+   * answer 413/400.
+   */
+  private fromTransportError(exception: unknown): ProblemBody | undefined {
+    if (typeof exception !== 'object' || exception === null) return undefined;
+    const candidate = exception as { type?: unknown; status?: unknown; statusCode?: unknown; message?: unknown };
+    const status = typeof candidate.status === 'number' ? candidate.status : typeof candidate.statusCode === 'number' ? candidate.statusCode : undefined;
+    if (status === undefined || status < 400 || status > 599) return undefined;
+    const message = typeof candidate.message === 'string' && candidate.message.length > 0 ? candidate.message : 'The request could not be read';
+    return { code: this.codeForStatus(status), detail: message, errors: [] };
   }
 
   private fromHttp(exception: HttpException): ProblemBody {
@@ -49,7 +70,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
   }
 
   private fromPrisma(exception: Prisma.PrismaClientKnownRequestError): ProblemBody {
-    if (exception.code === 'P2002') return { code: 'CONFLICT', detail: 'The resource already exists', errors: [] };
+    if (isUniqueViolation(exception)) return { code: 'CONFLICT', detail: 'The resource already exists', errors: [] };
     if (exception.code === 'P2025') return { code: 'NOT_FOUND', detail: 'The resource was not found', errors: [] };
     if (exception.code === 'P2003') return { code: 'CONFLICT', detail: 'A related resource is missing', errors: [] };
     return { code: 'INTERNAL_ERROR', detail: 'A database error occurred', errors: [] };
@@ -65,6 +86,7 @@ export class ProblemDetailsFilter implements ExceptionFilter {
       422: 'VALIDATION_FAILED',
       423: 'OTP_LOCKED',
       429: 'RATE_LIMITED',
+      413: 'PAYLOAD_TOO_LARGE',
       502: 'ADAPTER_UNAVAILABLE'
     };
     if (status >= 500) return 'INTERNAL_ERROR';
@@ -72,8 +94,9 @@ export class ProblemDetailsFilter implements ExceptionFilter {
   }
 }
 
-export const requestIdOf = (request: FastifyRequest): string => {
+export const requestIdOf = (request: Request): string => {
+  if (request.requestId !== undefined) return request.requestId;
   const header = request.headers[REQUEST_ID_HEADER];
   const value = Array.isArray(header) ? header[0] : header;
-  return typeof value === 'string' && value.length > 0 ? value : String(request.id);
+  return typeof value === 'string' && value.length > 0 ? value : 'unknown';
 };

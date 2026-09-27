@@ -1,6 +1,69 @@
 {
   "globalPrefix": "api/v1",
   "docsPath": "api/docs",
+  "info": {
+    "title": "Smart Home Maintenance Services API",
+    "version": "1.0.0",
+    "description": "The backend API for the Smart Home Maintenance Service platform: account sign-up and login, admin settings, payment webhooks, and health checks.\n\n**Getting started:** most endpoints need you to be logged in. Call `POST /auth/login` (password) or the OTP endpoints to get an `accessToken`, then click \"Authorize\" above and enter it as `Bearer <token>` to unlock the endpoints marked with a lock icon.\n\nEndpoints under **development** only work when the API is running with `DEV_INBOX_ENABLED=true` (local/dev setups) — they let you see the text messages, emails and files the mock providers would otherwise send to real services, which is how you retrieve OTP codes while testing."
+  },
+  "tags": [
+    {
+      "name": "health",
+      "description": "Check whether the API and the services it depends on (database, cache, background queues, file storage) are up and responding."
+    },
+    {
+      "name": "catalogue",
+      "description": "Browse service categories and bookable services, and (admin) manage them, commission rates, and which providers are approved to offer which service."
+    },
+    {
+      "name": "places",
+      "description": "Look up the cities and areas the platform operates in — use an area id when creating a customer address."
+    },
+    {
+      "name": "customer",
+      "description": "Actions for a signed-in customer account, such as managing saved addresses."
+    },
+    {
+      "name": "provider",
+      "description": "Actions for a signed-in service-provider account: profile, weekly availability, leave, and which areas they serve."
+    },
+    {
+      "name": "search",
+      "description": "Find approved providers for a service near a point, and view a provider's public profile."
+    },
+    {
+      "name": "booking",
+      "description": "Request a provider for a service and carry the job through to completion: accept/decline, cancel/reschedule, arrival OTP, checklist, quote revisions, and finishing the job."
+    },
+    {
+      "name": "auth",
+      "description": "Sign up, log in, and manage your account: passwords, one-time verification codes (OTP), sessions, and two-factor authentication (TOTP)."
+    },
+    {
+      "name": "settings",
+      "description": "Admin only. View and change platform-wide configuration values. Requires an ADMIN account with two-factor authentication turned on."
+    },
+    {
+      "name": "webhooks",
+      "description": "Called automatically by external providers (e.g. the payment gateway) to report events. Not meant to be called directly by client apps."
+    },
+    {
+      "name": "development",
+      "description": "Local/dev-only helpers for inspecting what the mock SMS, email and file-storage providers received, so flows like OTP login can be tested without real providers. Disabled in production."
+    }
+  ],
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "securitySchemes": {
+    "access-token": {
+      "scheme": "bearer",
+      "bearerFormat": "JWT",
+      "type": "http"
+    }
+  },
   "operations": [
     {
       "method": "GET",

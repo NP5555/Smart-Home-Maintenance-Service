@@ -1,14 +1,14 @@
 import { createHmac, randomUUID } from 'node:crypto';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { EnvironmentService } from '../../src/config/environment.service.js';
 import { callApi, createTestApp, type ApiResponse } from './harness.js';
 
 const prisma = new PrismaClient();
 const WEBHOOK_URL = '/webhooks/payments/mock';
 
-let app: NestFastifyApplication;
+let app: NestExpressApplication;
 let close: () => Promise<void>;
 let secret: string;
 

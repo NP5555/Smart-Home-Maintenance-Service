@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { totpCode } from '../../src/identity/otp.js';
 import { callApi, createTestApp, loginAs, postJson, readOtpFromInbox, refreshCookieOf, registerAndVerify, uniquePhone, type ApiResponse } from './harness.js';
 
@@ -7,7 +7,7 @@ const PASSWORD = 'CorrectHorse9Battery';
 const NEW_PASSWORD = 'BrandNewPass9';
 const SEEDED = { identifier: 'admin@smart-home.local', password: 'DevPassword!2026' };
 
-let app: NestFastifyApplication;
+let app: NestExpressApplication;
 let close: () => Promise<void>;
 
 beforeAll(async () => {

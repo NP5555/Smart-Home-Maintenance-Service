@@ -1,44 +1,92 @@
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import helmet from 'helmet';
 import { RequestMethod } from '@nestjs/common';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
-import cookie from '@fastify/cookie';
-import helmet from '@fastify/helmet';
-import rateLimit from '@fastify/rate-limit';
-import { EnvironmentService } from './config/environment.service.js';
-import { rawBodyPlugin } from './common/raw-body.js';
+import { DocumentBuilder, SwaggerModule, type OpenAPIObject } from '@nestjs/swagger';
+import type { EnvironmentService } from './config/environment.service.js';
+import { REQUEST_ID_HEADER } from './common/redaction.js';
+import { resolveRequestId } from './logger.js';
 
 export const GLOBAL_PREFIX = 'api/v1';
 export const OPENAPI_PATH = 'api/docs';
 
+/** Matches the `bodyLimit` the Fastify adapter was configured with. */
+export const BODY_LIMIT = '1mb';
+export const RATE_LIMIT_MAX = 300;
+export const RATE_LIMIT_WINDOW_MS = 60_000;
+
+type HttpApplication = NestExpressApplication;
+
 /**
- * Fastify plugins that must be in place before routes are served. Shared by the
- * entrypoint and the integration harness so tests cannot run against a surface
- * the production process never has.
+ * Assigns every request an id up front and echoes it on the response, which is
+ * what Fastify's `genReqId` did. It has to run before every other middleware so
+ * that a rejection from helmet or the rate limiter is still traceable.
  */
-export const registerHttpPlugins = async (app: NestFastifyApplication, environment: EnvironmentService): Promise<void> => {
-  await app.register(rawBodyPlugin);
-  await app.register(helmet, { global: true, contentSecurityPolicy: false });
-  await app.register(cookie, { secret: environment.values.CSRF_SECRET });
-  await app.register(rateLimit, { global: true, max: 300, timeWindow: '1 minute', keyGenerator: request => request.ip });
+export const requestIdMiddleware = (): RequestHandler => (request: Request, response: Response, next: NextFunction) => {
+  const id = resolveRequestId(request.headers);
+  request.requestId = id;
+  response.setHeader(REQUEST_ID_HEADER, id);
+  next();
 };
 
 /**
- * Everything that shapes the HTTP surface, shared by the real entrypoint and the
- * integration harness so the tests cannot exercise a different routing setup
- * than production.
+ * Fixed-window per-IP rate limit standing in for @fastify/rate-limit, with the
+ * same budget (300 requests per minute) and the same key (the client IP). A
+ * single process is the deployment target, so an in-memory counter is enough;
+ * it is exported separately so the limit can be exercised in a test.
  */
-export const configureHttpApp = (app: NestFastifyApplication, environment: EnvironmentService): void => {
-  app.setGlobalPrefix(GLOBAL_PREFIX, {
-    exclude: [
-      { path: '', method: RequestMethod.GET },
-      { path: 'health/{*path}', method: RequestMethod.GET },
-      { path: 'api/docs/{*path}', method: RequestMethod.GET }
-    ]
-  });
-  app.enableCors({ origin: environment.values.CORS_ORIGINS, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
-  app.enableShutdownHooks();
+export const createRateLimitMiddleware = (max: number, windowMs: number): RequestHandler => {
+  const hits = new Map<string, { count: number; resetAt: number }>();
+  return (request: Request, response: Response, next: NextFunction) => {
+    const key = request.ip ?? 'unknown';
+    const now = Date.now();
+    const entry = hits.get(key);
+    const current = entry === undefined || entry.resetAt <= now ? { count: 0, resetAt: now + windowMs } : entry;
+    current.count += 1;
+    hits.set(key, current);
+    response.setHeader('X-RateLimit-Limit', max);
+    response.setHeader('X-RateLimit-Remaining', Math.max(0, max - current.count));
+    if (current.count > max) {
+      response.setHeader('Retry-After', Math.ceil((current.resetAt - now) / 1000));
+      response.status(429).type('application/problem+json').send({
+        type: 'https://smart-home.local/problems/rate-limited',
+        title: 'Too Many Requests',
+        status: 429,
+        code: 'RATE_LIMITED',
+        detail: `Rate limit of ${max} requests per ${Math.round(windowMs / 1000)} seconds exceeded`,
+        instance: request.url,
+        requestId: request.requestId,
+        errors: []
+      });
+      return;
+    }
+    next();
+  };
+};
 
-  const openApi = new DocumentBuilder()
+/**
+ * Middleware that must be in place before routes are served. Shared by the
+ * entrypoint and the integration harness so tests cannot run against a surface
+ * the production process never has.
+ */
+export const registerHttpPlugins = async (app: HttpApplication, environment: EnvironmentService): Promise<void> => {
+  const express = app.getHttpAdapter().getInstance();
+  express.set('trust proxy', true);
+  express.use(requestIdMiddleware());
+  express.use(helmet({ contentSecurityPolicy: false }));
+  app.useBodyParser('json', { limit: BODY_LIMIT });
+  app.useBodyParser('urlencoded', { limit: BODY_LIMIT, extended: true });
+  app.use(createRateLimitMiddleware(RATE_LIMIT_MAX, RATE_LIMIT_WINDOW_MS));
+  void environment;
+};
+
+/**
+ * The OpenAPI document definition, shared by `configureHttpApp` and the
+ * api-surface snapshot script so the two can never drift: a snapshot taken
+ * against a separately built document would not notice a change to the
+ * description, tags or server list.
+ */
+export const buildOpenApiConfig = (): Omit<OpenAPIObject, 'paths'> => new DocumentBuilder()
     .setTitle('Smart Home Maintenance Services API')
     .setDescription(
       [
@@ -62,7 +110,25 @@ export const configureHttpApp = (app: NestFastifyApplication, environment: Envir
     .addTag('webhooks', "Called automatically by external providers (e.g. the payment gateway) to report events. Not meant to be called directly by client apps.")
     .addTag('development', 'Local/dev-only helpers for inspecting what the mock SMS, email and file-storage providers received, so flows like OTP login can be tested without real providers. Disabled in production.')
     .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
-    .addServer(`/${GLOBAL_PREFIX}`)
+    .addServer('/')
     .build();
-  SwaggerModule.setup(OPENAPI_PATH, app, SwaggerModule.createDocument(app, openApi), { jsonDocumentUrl: `${OPENAPI_PATH}/openapi.json`, swaggerOptions: { persistAuthorization: true } });
+
+/**
+ * Everything that shapes the HTTP surface, shared by the real entrypoint and the
+ * integration harness so the tests cannot exercise a different routing setup
+ * than production.
+ */
+export const configureHttpApp = (app: HttpApplication, environment: EnvironmentService): void => {
+  app.setGlobalPrefix(GLOBAL_PREFIX, {
+    exclude: [
+      { path: '', method: RequestMethod.GET },
+      { path: 'health/{*path}', method: RequestMethod.GET },
+      { path: 'api/docs/{*path}', method: RequestMethod.GET }
+    ]
+  });
+  app.enableCors({ origin: environment.values.CORS_ORIGINS, credentials: true, methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'] });
+  app.enableShutdownHooks();
+
+  const document = SwaggerModule.createDocument(app, buildOpenApiConfig());
+  SwaggerModule.setup(OPENAPI_PATH, app, document, { jsonDocumentUrl: `${OPENAPI_PATH}/openapi.json`, swaggerOptions: { persistAuthorization: true } });
 };

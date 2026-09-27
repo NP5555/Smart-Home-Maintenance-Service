@@ -1,6 +1,6 @@
 import { Prisma, PrismaClient } from '@prisma/client';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { EnvironmentService } from '../../src/config/environment.service.js';
 import { OutboxDispatcher } from '../../src/platform/outbox.dispatcher.js';
 import { PrismaService } from '../../src/database/prisma.service.js';
@@ -11,7 +11,7 @@ import { createTestApp } from './harness.js';
 const prisma = new PrismaClient();
 const EVENT_TYPE = 'booking.requested';
 
-let app: NestFastifyApplication;
+let app: NestExpressApplication;
 let close: () => Promise<void>;
 let registry: QueueRegistry;
 let prismaService: PrismaService;

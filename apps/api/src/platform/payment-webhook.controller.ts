@@ -1,7 +1,7 @@
 import { Body, Controller, Headers, HttpCode, Inject, Param, Post, Req } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Prisma } from '@prisma/client';
-import type { FastifyRequest } from 'fastify';
+import type { Request } from 'express';
 import { z } from 'zod';
 import { DomainError } from '../common/domain-error.js';
 import { Public } from '../common/policy.js';
@@ -39,7 +39,7 @@ export class PaymentWebhookController {
       "Called automatically by the payment gateway to report events like a completed or failed payment. The request must carry the gateway's signature to prove it is genuine. If the same event is delivered more than once (gateways commonly retry), later copies are recognized and safely ignored instead of being processed twice."
   })
   async receive(
-    @Req() request: FastifyRequest,
+    @Req() request: Request,
     @Headers() headers: Record<string, string | string[] | undefined>,
     @Body() body: unknown,
     @Param('provider') rawProvider: string

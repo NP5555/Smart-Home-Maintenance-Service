@@ -1,5 +1,5 @@
 import { SetMetadata, createParamDecorator, type ExecutionContext } from '@nestjs/common';
-import type { FastifyRequest } from 'fastify';
+import type { Request } from 'express';
 import { DomainError } from './domain-error.js';
 
 export const STAFF_ROLES = ['AGENT', 'FINANCE', 'ADMIN'] as const;
@@ -14,7 +14,7 @@ export const POLICY_METADATA_KEY = 'smart-home:policy';
 
 export type AuthenticatedPrincipal = { userId: string; roles: readonly ActorRole[]; totpVerified: boolean; sessionId: string };
 
-export type AuthenticatedRequest = FastifyRequest & { principal?: AuthenticatedPrincipal };
+export type AuthenticatedRequest = Request & { principal?: AuthenticatedPrincipal };
 
 export const Public = (): MethodDecorator & ClassDecorator => SetMetadata(POLICY_METADATA_KEY, { public: true } satisfies Policy);
 

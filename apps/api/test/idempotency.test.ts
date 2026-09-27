@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { IDEMPOTENT_METHODS, idempotencyHeaderOf, shouldBeIdempotent } from '../src/common/idempotency.interceptor.js';
 import { IDEMPOTENCY_MAX_LENGTH, IDEMPOTENCY_MIN_LENGTH, IDEMPOTENCY_REPLAYED_HEADER, requestFingerprint, validateIdempotencyKey } from '../src/common/idempotency.js';
 import { DomainError } from '../src/common/domain-error.js';
+import { isUniqueViolation } from '../src/common/unique-violation.js';
 import { outboxQueueFor } from '../src/platform/audit.service.js';
 import { QUEUE_NAMES, REPEATABLE_JOBS } from '../src/queues/queue.registry.js';
-import type { FastifyRequest } from 'fastify';
+import type { Request } from 'express';
 
-const request = (method: string, headers: Record<string, string> = {}): FastifyRequest => ({ method, headers }) as unknown as FastifyRequest;
+const request = (method: string, headers: Record<string, string> = {}): Request => ({ method, headers }) as unknown as Request;
 
 describe('idempotency foundation (TRD §5.4)', () => {
   it('applies only to mutating methods', () => {
@@ -36,6 +37,19 @@ describe('idempotency foundation (TRD §5.4)', () => {
 
   it('marks a replayed response with a dedicated header', () => {
     expect(IDEMPOTENCY_REPLAYED_HEADER).toBe('idempotency-replayed');
+  });
+
+  it('recognises a duplicate key from both a raw query and a Prisma model call', () => {
+    // The idempotency insert is a raw query, so Postgres reports SQLSTATE 23505
+    // directly instead of Prisma rewriting it into P2002. Matching only P2002 is
+    // what made a replayed request answer 500.
+    expect(isUniqueViolation({ code: '23505' })).toBe(true);
+    expect(isUniqueViolation({ code: 'P2002' })).toBe(true);
+    expect(isUniqueViolation({ meta: { code: '23505' } })).toBe(true);
+    expect(isUniqueViolation({ code: '23503' })).toBe(false);
+    expect(isUniqueViolation({ code: 'P2025' })).toBe(false);
+    expect(isUniqueViolation(new Error('boom'))).toBe(false);
+    expect(isUniqueViolation(undefined)).toBe(false);
   });
 });
 

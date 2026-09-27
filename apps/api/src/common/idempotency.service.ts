@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../database/prisma.service.js';
 import { DomainError } from './domain-error.js';
 import { requestFingerprint, type IdempotencyRecord } from './idempotency.js';
+import { isUniqueViolation } from './unique-violation.js';
 
 export type IdempotentOperation = { key: string; userId: string; method: string; path: string; body: unknown };
 
@@ -15,7 +16,9 @@ export const beginIdempotentOperation = async (prisma: PrismaService, operation:
     );
     return { replayed: false, statusCode: 0, response: null };
   } catch (error) {
-    if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+    // The insert below is a raw query, so the conflict arrives as SQLSTATE
+    // 23505 rather than Prisma's P2002; either shape means the key was taken.
+    if (!isUniqueViolation(error)) throw error;
     const existing = await prisma.$queryRaw<{ request_hash: string; status_code: number | null; response: Prisma.JsonValue | null }[]>(
       Prisma.sql`SELECT request_hash, status_code, response FROM idempotency_keys WHERE key = ${operation.key} AND user_id = ${operation.userId}::uuid`
     );

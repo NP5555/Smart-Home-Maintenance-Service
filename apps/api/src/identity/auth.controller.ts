@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, Get, Headers, HttpCode, Inject, Ip, Post, Req, Res } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-import type { FastifyReply, FastifyRequest } from 'fastify';
+import type { Request, Response } from 'express';
 import { ApiZodBody } from '../common/swagger.js';
 import { DomainError } from '../common/domain-error.js';
 import { Authenticated, CurrentPrincipal, Public, type AuthenticatedPrincipal } from '../common/policy.js';
@@ -70,10 +70,10 @@ export class AuthController {
       'Submits the code you received by SMS or email. For the REGISTER and LOGIN purposes, a correct code logs you in and returns an access token; for other purposes it just confirms the code matches.\n\n**Testing locally:** find the 6-digit code in `GET /dev/inbox`.'
   })
   @ApiZodBody(otpVerifySchema, { register: { summary: 'Confirm registration', value: { target: '+923001234567', purpose: 'REGISTER', code: '123456' } } })
-  async verifyOtp(@Body() body: unknown, @Req() request: FastifyRequest, @Ip() ip: string, @Res({ passthrough: true }) reply: FastifyReply) {
+  async verifyOtp(@Body() body: unknown, @Req() request: Request, @Ip() ip: string, @Res({ passthrough: true }) response: Response) {
     const { target, purpose, code } = parseWith(otpVerifySchema, body);
     const result = await this.auth.verifyOtp(target, purpose, code, this.metaOf(request, ip));
-    return this.issue(result, reply);
+    return this.issue(result, response);
   }
 
   @Post('login')
@@ -87,9 +87,9 @@ export class AuthController {
     customer: { summary: 'Customer or provider', value: { identifier: '+923001234567', password: 'CorrectHorse9Battery' } },
     staff: { summary: 'Seeded admin (dev)', value: { identifier: 'admin@smart-home.local', password: 'DevPassword!2026', totpCode: '123456' } }
   })
-  async login(@Body() body: unknown, @Req() request: FastifyRequest, @Ip() ip: string, @Res({ passthrough: true }) reply: FastifyReply) {
+  async login(@Body() body: unknown, @Req() request: Request, @Ip() ip: string, @Res({ passthrough: true }) response: Response) {
     const input = parseWith(loginSchema, body);
-    return this.issue(await this.auth.login(input, this.metaOf(request, ip)), reply);
+    return this.issue(await this.auth.login(input, this.metaOf(request, ip)), response);
   }
 
   @Post('refresh')
@@ -102,20 +102,20 @@ export class AuthController {
     status: 401,
     description: 'The refresh token had already been used once before. That looks like the token was stolen and replayed, so every session descended from it has been signed out as a precaution — the user needs to log in again.'
   })
-  async refresh(@Req() request: FastifyRequest, @Ip() ip: string, @Res({ passthrough: true }) reply: FastifyReply) {
+  async refresh(@Req() request: Request, @Ip() ip: string, @Res({ passthrough: true }) response: Response) {
     const presented = this.cookieOf(request);
     if (presented === undefined) throw new DomainError('UNAUTHENTICATED', 'A refresh token is required');
-    return this.issue(await this.auth.refresh(presented, this.metaOf(request, ip)), reply);
+    return this.issue(await this.auth.refresh(presented, this.metaOf(request, ip)), response);
   }
 
   @Post('logout')
   @HttpCode(204)
   @Public()
   @ApiOperation({ summary: 'Log out', description: 'Ends the current session by invalidating the refresh cookie. The access token you were holding will simply expire on its own shortly after (it is not individually revoked).' })
-  async logout(@Req() request: FastifyRequest, @Res({ passthrough: true }) reply: FastifyReply) {
+  async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const presented = this.cookieOf(request);
     if (presented !== undefined) await this.auth.logout(presented);
-    this.clearCookie(reply);
+    this.clearCookie(response);
   }
 
   @Post('password/forgot')
@@ -138,9 +138,9 @@ export class AuthController {
     description: 'Submits the reset code from POST /auth/password/forgot along with a new password. On success, every other active session on the account is signed out for safety, and this response logs you in with a fresh session.'
   })
   @ApiZodBody(passwordResetSchema, { default: { summary: 'Reset with the emailed/texted code', value: { identifier: '+923001234567', code: '123456', newPassword: 'BrandNewPass9' } } })
-  async reset(@Body() body: unknown, @Req() request: FastifyRequest, @Ip() ip: string, @Res({ passthrough: true }) reply: FastifyReply) {
+  async reset(@Body() body: unknown, @Req() request: Request, @Ip() ip: string, @Res({ passthrough: true }) response: Response) {
     const input = parseWith(passwordResetSchema, body);
-    return this.issue(await this.auth.resetPassword(input, this.metaOf(request, ip)), reply);
+    return this.issue(await this.auth.resetPassword(input, this.metaOf(request, ip)), response);
   }
 
   @Get('me')
@@ -187,8 +187,8 @@ export class AuthController {
    * routes (TRD §16) so script cannot read it. The access token stays in the
    * response body for the client to hold in memory only.
    */
-  private issue(result: AuthResult, reply: FastifyReply) {
-    reply.setCookie(REFRESH_COOKIE, result.refreshToken, {
+  private issue(result: AuthResult, response: Response) {
+    response.cookie(REFRESH_COOKIE, result.refreshToken, {
       httpOnly: true,
       secure: this.secureCookies,
       sameSite: 'lax',
@@ -203,8 +203,8 @@ export class AuthController {
     };
   }
 
-  private clearCookie(reply: FastifyReply): void {
-    reply.clearCookie(REFRESH_COOKIE, { httpOnly: true, secure: this.secureCookies, sameSite: 'lax', path: REFRESH_COOKIE_PATH });
+  private clearCookie(response: Response): void {
+    response.clearCookie(REFRESH_COOKIE, { httpOnly: true, secure: this.secureCookies, sameSite: 'lax', path: REFRESH_COOKIE_PATH });
   }
 
   private requirePrincipal(principal: AuthenticatedPrincipal | undefined): string {
@@ -212,7 +212,7 @@ export class AuthController {
     return principal.userId;
   }
 
-  private metaOf(request: FastifyRequest, ip: string): { userAgent?: string | undefined; ip?: string | undefined } {
+  private metaOf(request: Request, ip: string): { userAgent?: string | undefined; ip?: string | undefined } {
     const agent = request.headers['user-agent'];
     return { userAgent: agent, ip: ip === '' ? undefined : ip };
   }
@@ -221,7 +221,7 @@ export class AuthController {
     return acceptLanguage?.toLowerCase().startsWith('ur') ? 'ur' : 'en';
   }
 
-  private cookieOf(request: FastifyRequest): string | undefined {
+  private cookieOf(request: Request): string | undefined {
     const raw = request.headers.cookie;
     if (raw === undefined) return undefined;
     for (const part of raw.split(';')) {

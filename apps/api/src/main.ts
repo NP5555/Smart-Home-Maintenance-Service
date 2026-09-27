@@ -5,19 +5,27 @@ import { createHttpAdapter, type HttpApplication } from './adapter.js';
 import { AppModule } from './app.module.js';
 import { EnvironmentService } from './config/environment.service.js';
 import { configureHttpApp, registerHttpPlugins, GLOBAL_PREFIX, OPENAPI_PATH } from './http-app.js';
+import { JsonLogger, toNestLogLevel } from './logger.js';
 import { SettingsService } from './platform/settings.service.js';
 
 export { GLOBAL_PREFIX, OPENAPI_PATH };
 
 export const bootstrap = async (): Promise<HttpApplication> => {
   const environment = new EnvironmentService();
-  const app = await NestFactory.create<HttpApplication>(AppModule, createHttpAdapter(environment.values.LOG_LEVEL, environment.isProduction), { bufferLogs: true });
+  const app = await NestFactory.create<HttpApplication>(AppModule, createHttpAdapter(), {
+    bufferLogs: true,
+    // Gives every request a `rawBody` Buffer, which is what the payment webhook
+    // hashes to verify the gateway's signature. It replaces the Fastify
+    // preParsing hook that used to live in src/common/raw-body.ts.
+    rawBody: true
+  });
+  app.useLogger(new JsonLogger({ level: toNestLogLevel(environment.values.LOG_LEVEL), isProduction: environment.isProduction }));
 
   await registerHttpPlugins(app, environment);
   configureHttpApp(app, environment);
 
   await app.get(SettingsService).start();
-  await app.listen({ port: environment.values.PORT, host: environment.values.API_HOST });
+  await app.listen(environment.values.PORT, environment.values.API_HOST);
   return app;
 };
 

@@ -1,8 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import type { NestFastifyApplication } from '@nestjs/platform-fastify';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { adminSession, callApi, createTestApp, deleteWith, patchJson, postJson, putJson, registerAndVerify } from './harness.js';
 
-let app: NestFastifyApplication;
+let app: NestExpressApplication;
 let close: () => Promise<void>;
 let admin: { accessToken: string; userId: string };
 let lahoreCityId: number;
