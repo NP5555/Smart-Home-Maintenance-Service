@@ -1,27 +1,17 @@
 import 'reflect-metadata';
 import { randomUUID } from 'node:crypto';
-import type { IncomingMessage } from 'node:http';
 import { NestFactory } from '@nestjs/core';
-import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { createHttpAdapter, type HttpApplication } from './adapter.js';
 import { AppModule } from './app.module.js';
 import { EnvironmentService } from './config/environment.service.js';
 import { configureHttpApp, registerHttpPlugins, GLOBAL_PREFIX, OPENAPI_PATH } from './http-app.js';
-import { buildLoggerOptions, resolveRequestId } from './logger.js';
 import { SettingsService } from './platform/settings.service.js';
 
 export { GLOBAL_PREFIX, OPENAPI_PATH };
 
-export const createHttpAdapter = (logLevel: string, isProduction: boolean): FastifyAdapter =>
-  new FastifyAdapter({
-    logger: buildLoggerOptions(logLevel, isProduction),
-    genReqId: (request: IncomingMessage) => resolveRequestId(request.headers),
-    bodyLimit: 1_048_576,
-    trustProxy: true
-  });
-
-export const bootstrap = async (): Promise<NestFastifyApplication> => {
+export const bootstrap = async (): Promise<HttpApplication> => {
   const environment = new EnvironmentService();
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, createHttpAdapter(environment.values.LOG_LEVEL, environment.isProduction), { bufferLogs: true });
+  const app = await NestFactory.create<HttpApplication>(AppModule, createHttpAdapter(environment.values.LOG_LEVEL, environment.isProduction), { bufferLogs: true });
 
   await registerHttpPlugins(app, environment);
   configureHttpApp(app, environment);

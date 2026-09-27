@@ -13,7 +13,8 @@
     "lint": "eslint src test",
     "typecheck": "tsc -p tsconfig.json",
     "test": "vitest run",
-    "test:integration": "dotenv -e ../../.env -- vitest run --config vitest.integration.config.ts"
+    "test:integration": "dotenv -e ../../.env -- vitest run --config vitest.integration.config.ts",
+    "api:surface": "dotenv -e ../../.env -- tsx scripts/api-surface.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",

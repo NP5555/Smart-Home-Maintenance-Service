@@ -1,0 +1,555 @@
+{
+  "globalPrefix": "api/v1",
+  "docsPath": "api/docs",
+  "operations": [
+    {
+      "method": "GET",
+      "path": "/",
+      "operationId": "HealthController_root",
+      "summary": "Welcome message",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/catalogue/categories",
+      "operationId": "CatalogueAdminController_createCategory",
+      "summary": "Create a service category",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/catalogue/categories/{id}",
+      "operationId": "CatalogueAdminController_updateCategory",
+      "summary": "Update a service category",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/catalogue/commission-rules",
+      "operationId": "CatalogueAdminController_listCommissionRules",
+      "summary": "List commission rules",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/catalogue/commission-rules",
+      "operationId": "CatalogueAdminController_createCommissionRule",
+      "summary": "Set a commission rate",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/catalogue/commission-rules/{id}/end",
+      "operationId": "CatalogueAdminController_endCommissionRule",
+      "summary": "Close a commission rule",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/catalogue/services",
+      "operationId": "CatalogueAdminController_createService",
+      "summary": "Create a bookable service",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/admin/catalogue/services/{id}",
+      "operationId": "CatalogueAdminController_updateService",
+      "summary": "Update a bookable service",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/catalogue/services/{id}/checklist",
+      "operationId": "CatalogueAdminController_replaceChecklist",
+      "summary": "Replace a service's checklist",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/provider-services",
+      "operationId": "ProviderServicesAdminController_list",
+      "summary": "Review provider service offers",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/provider-services/{providerId}/{serviceId}/approve",
+      "operationId": "ProviderServicesAdminController_approve",
+      "summary": "Approve a provider's offer to provide a service",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/provider-services/{providerId}/{serviceId}/reject",
+      "operationId": "ProviderServicesAdminController_reject",
+      "summary": "Reject a provider's offer to provide a service",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/providers/{providerId}/approve",
+      "operationId": "ProviderApprovalAdminController_approve",
+      "summary": "Approve a provider",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/admin/providers/{providerId}/reject",
+      "operationId": "ProviderApprovalAdminController_reject",
+      "summary": "Reject a provider",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/settings",
+      "operationId": "SettingsController_list",
+      "summary": "List all platform settings",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/admin/settings/{key}",
+      "operationId": "SettingsController_read",
+      "summary": "Read one setting's current value",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/admin/settings/{key}",
+      "operationId": "SettingsController_update",
+      "summary": "Change a setting's value",
+      "tags": [
+        "settings"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/login",
+      "operationId": "AuthController_login",
+      "summary": "Log in with a password",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/logout",
+      "operationId": "AuthController_logout",
+      "summary": "Log out",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/auth/me",
+      "operationId": "AuthController_me",
+      "summary": "Get your own profile",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/otp/request",
+      "operationId": "AuthController_requestOtp",
+      "summary": "Send a one-time verification code",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/otp/verify",
+      "operationId": "AuthController_verifyOtp",
+      "summary": "Verify a one-time code",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password/forgot",
+      "operationId": "AuthController_forgot",
+      "summary": "Request a password reset code",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/password/reset",
+      "operationId": "AuthController_reset",
+      "summary": "Reset your password",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/refresh",
+      "operationId": "AuthController_refresh",
+      "summary": "Get a new access token",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/register",
+      "operationId": "AuthController_register",
+      "summary": "Sign up for a new account",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/auth/totp",
+      "operationId": "AuthController_totpDisable",
+      "summary": "Turn off two-factor authentication",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/totp/setup",
+      "operationId": "AuthController_totpSetup",
+      "summary": "Start setting up two-factor authentication",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/auth/totp/verify",
+      "operationId": "AuthController_totpVerify",
+      "summary": "Confirm and turn on two-factor authentication",
+      "tags": [
+        "auth"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookings",
+      "operationId": "BookingController_listMine",
+      "summary": "List my bookings",
+      "tags": [
+        "booking"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/bookings",
+      "operationId": "BookingController_create",
+      "summary": "Request a provider for a service",
+      "tags": [
+        "booking"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/bookings/{id}",
+      "operationId": "BookingController_getOne",
+      "summary": "Read one booking",
+      "tags": [
+        "booking"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/catalogue/categories",
+      "operationId": "CatalogueController_listCategories",
+      "summary": "Browse the service categories",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/catalogue/categories/{slug}/services",
+      "operationId": "CatalogueController_listServicesInCategory",
+      "summary": "Browse the services in a category",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/catalogue/services/{slug}",
+      "operationId": "CatalogueController_serviceDetail",
+      "summary": "Get one service, including its checklist",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/customer/addresses",
+      "operationId": "AddressesController_listMine",
+      "summary": "List my saved addresses",
+      "tags": [
+        "customer"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/customer/addresses",
+      "operationId": "AddressesController_create",
+      "summary": "Save a new address",
+      "tags": [
+        "customer"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/customer/addresses/{id}",
+      "operationId": "AddressesController_archive",
+      "summary": "Remove a saved address",
+      "tags": [
+        "customer"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/customer/addresses/{id}",
+      "operationId": "AddressesController_update",
+      "summary": "Update a saved address",
+      "tags": [
+        "customer"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dev/inbox",
+      "operationId": "DevController_inboxMessages",
+      "summary": "View messages the mock SMS/email/WhatsApp senders \"sent\"",
+      "tags": [
+        "development"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/dev/storage/{bucket}/{key}",
+      "operationId": "DevController_storageObject",
+      "summary": "Download a file from the mock file storage",
+      "tags": [
+        "development"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/places/cities",
+      "operationId": "PlacesController_listCities",
+      "summary": "List the cities the platform operates in",
+      "tags": [
+        "places"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/places/cities/{cityId}/areas",
+      "operationId": "PlacesController_listAreas",
+      "summary": "List the areas within a city",
+      "tags": [
+        "places"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/provider/availability",
+      "operationId": "ProviderController_getAvailability",
+      "summary": "Read my weekly availability calendar",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/provider/availability",
+      "operationId": "ProviderController_replaceAvailability",
+      "summary": "Replace my weekly availability calendar",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/provider/profile",
+      "operationId": "ProviderController_getProfile",
+      "summary": "Read my provider profile",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/v1/provider/profile",
+      "operationId": "ProviderController_updateProfile",
+      "summary": "Update my provider profile",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/provider/service-areas",
+      "operationId": "ProviderController_getServiceAreas",
+      "summary": "List the areas I serve",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/provider/service-areas",
+      "operationId": "ProviderController_replaceServiceAreas",
+      "summary": "Replace the areas I serve",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/provider/services",
+      "operationId": "ProviderServicesController_listMine",
+      "summary": "List the services I offer",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/provider/services/{serviceId}",
+      "operationId": "ProviderServicesController_removeMine",
+      "summary": "Stop offering a service",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "PUT",
+      "path": "/api/v1/provider/services/{serviceId}",
+      "operationId": "ProviderServicesController_upsertMine",
+      "summary": "Offer a service at your price",
+      "tags": [
+        "catalogue"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/provider/time-off",
+      "operationId": "ProviderController_listTimeOff",
+      "summary": "List my recorded leave periods",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/provider/time-off",
+      "operationId": "ProviderController_createTimeOff",
+      "summary": "Record a leave period",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "DELETE",
+      "path": "/api/v1/provider/time-off/{id}",
+      "operationId": "ProviderController_cancelTimeOff",
+      "summary": "Cancel a leave period",
+      "tags": [
+        "provider"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/search/providers",
+      "operationId": "SearchController_searchProviders",
+      "summary": "Find providers who offer a service near a point",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/api/v1/search/providers/{providerId}",
+      "operationId": "SearchController_providerDetail",
+      "summary": "Get a provider’s full public profile",
+      "tags": [
+        "search"
+      ]
+    },
+    {
+      "method": "POST",
+      "path": "/api/v1/webhooks/payments/{provider}",
+      "operationId": "PaymentWebhookController_receive",
+      "summary": "Payment provider webhook (not for direct use)",
+      "tags": [
+        "webhooks"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/health/live",
+      "operationId": "HealthController_live",
+      "summary": "Is the server process running?",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/health/queues",
+      "operationId": "HealthController_queueDepths",
+      "summary": "How many jobs are waiting in each background queue",
+      "tags": [
+        "health"
+      ]
+    },
+    {
+      "method": "GET",
+      "path": "/health/ready",
+      "operationId": "HealthController_ready",
+      "summary": "Is the API fully ready to handle requests?",
+      "tags": [
+        "health"
+      ]
+    }
+  ]
+}
