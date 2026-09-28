@@ -24,6 +24,11 @@ beforeAll(async () => {
   registry = app.get(QueueRegistry);
   prismaService = app.get(PrismaService);
   environment = app.get(EnvironmentService);
+  // The dispatcher starts a 1s interval timer on module init, which would claim
+  // and enqueue seeded rows behind the tests' backs. Every test here drives
+  // `poll()` explicitly and counts what it enqueued, so an ambient sweep steals
+  // rows from the tally and makes the run depend on wall-clock timing.
+  app.get(OutboxDispatcher).stop();
 });
 
 afterAll(async () => {
@@ -57,17 +62,48 @@ const unprocessed = async (ids: string[]): Promise<number> => {
   return Number(rows[0]?.count ?? 0n);
 };
 
+const backlog = async (): Promise<number> => {
+  const rows = await prisma.$queryRaw<{ count: bigint }[]>(Prisma.sql`SELECT count(*)::bigint AS count FROM outbox_events WHERE processed_at IS NULL`);
+  return Number(rows[0]?.count ?? 0n);
+};
+
 /** BullMQ keeps one job per jobId, so a duplicate dispatch would collapse here. */
 const jobFor = async (outboxId: string) => registry.queue(outboxQueueFor(EVENT_TYPE)).getJob(`outbox-${outboxId}`);
 
+/**
+ * Clears the table and waits for it to stay clear. A dispatched row runs real
+ * BullMQ workers, which can themselves emit further outbox events, so a single
+ * sweep is not enough to reach a quiet state.
+ */
+const drain = async (): Promise<void> => {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    await app.get(OutboxDispatcher).poll(1000);
+    if ((await backlog()) === 0) {
+      await new Promise(resolve => setTimeout(resolve, 50));
+      if ((await backlog()) === 0) return;
+    }
+  }
+  throw new Error(`outbox backlog would not drain: ${await backlog()} rows still unprocessed`);
+};
+
 describe('SHM-008: outbox rows are dispatched exactly once under concurrent workers', () => {
   it('two workers racing over the same rows produce one job per row and no duplicates', async () => {
+    // The dispatcher sweeps the whole table oldest-first, not just these rows, so
+    // a backlog left by an earlier test file would be claimed ahead of them and
+    // the batch exhausted before reaching the rows under test. Draining first
+    // also lets the queue workers triggered by that drain finish writing their
+    // own follow-up events, so the count below is measured on a quiet table.
+    await drain();
+
     const ids = await seedEvents(12);
     expect(ids).toHaveLength(12);
 
     const results = await Promise.all([app.get(OutboxDispatcher).poll(100), extraWorker().poll(100)]);
     const enqueued = results.reduce((total, result) => total + result.enqueued, 0);
 
+    // Only a lower bound: the table is shared, and a worker woken by this very
+    // dispatch can insert further events that the same round also claims. The
+    // per-row assertions below are what prove this test's rows were all handled.
     expect(enqueued).toBeGreaterThanOrEqual(ids.length);
     expect(await unprocessed(ids)).toBe(0);
     for (const id of ids) {
@@ -86,6 +122,8 @@ describe('SHM-008: outbox rows are dispatched exactly once under concurrent work
   });
 
   it('rows beyond one batch are all reached, and SKIP LOCKED never blocks a second worker', async () => {
+    await drain();
+
     const ids = await seedEvents(25);
     let sweeps = 0;
     while ((await unprocessed(ids)) > 0 && sweeps < 10) {

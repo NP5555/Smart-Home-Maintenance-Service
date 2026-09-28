@@ -18,6 +18,7 @@ import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { NestFactory } from '@nestjs/core';
 import { SwaggerModule } from '@nestjs/swagger';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { createHttpAdapter } from '../src/adapter.js';
 import { AppModule } from '../src/app.module.js';
 import { EnvironmentService } from '../src/config/environment.service.js';
@@ -40,7 +41,10 @@ const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options'
 
 export const readSurface = async (): Promise<ApiSurface> => {
   const environment = new EnvironmentService();
-  const app = await NestFactory.create(AppModule, createHttpAdapter(), { bufferLogs: true, logger: false, rawBody: true });
+  // Typed as the Express application so the same helpers production uses apply
+  // here; without the generic, Nest infers the adapter-agnostic interface and the
+  // Express-specific plugin signatures no longer match.
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, createHttpAdapter(), { bufferLogs: true, logger: false, rawBody: true });
 
   await registerHttpPlugins(app, environment);
   configureHttpApp(app, environment);
