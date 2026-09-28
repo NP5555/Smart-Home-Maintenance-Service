@@ -1,0 +1,928 @@
+// ============================================================================
+// Smart Home Maintenance Services — Prisma Schema
+// Source: SRS v2.0, Section 10 (Data Requirements) + Sections 6 (FR) & 7 (Penalties)
+// Stack: PostgreSQL + Prisma ORM
+// ============================================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------------------------------------------------
+// ENUMS
+// -----------------------------------------------------------------------
+
+enum UserRole {
+  CUSTOMER
+  PROVIDER
+  VERIFICATION_AGENT
+  FINANCE_OFFICER
+  ADMIN
+}
+
+enum ProviderApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+  BLOCKED
+}
+
+enum PricingModel {
+  FLAT
+  PER_DAY
+  INSPECTION_FIRST
+}
+
+enum CommissionScope {
+  GLOBAL
+  CATEGORY
+  PROVIDER
+}
+
+enum VerificationTier {
+  A
+  B
+}
+
+enum BookingStatus {
+  REQUESTED
+  ACCEPTED
+  DECLINED
+  EXPIRED
+  SCHEDULED
+  EN_ROUTE
+  IN_PROGRESS
+  QUOTE_REVISION
+  WORK_COMPLETED
+  AWAITING_VERIFICATION
+  REWORK
+  DISPUTED
+  VERIFIED
+  PAYMENT_RELEASED
+  AUTO_RELEASED
+  CANCELLED_CUSTOMER
+  CANCELLED_PROVIDER
+  NO_SHOW
+  PARTIALLY_REFUNDED
+  REFUNDED
+  CLOSED
+}
+
+enum PaymentMode {
+  CASH
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
+}
+
+enum EvidenceType {
+  BEFORE_PHOTO
+  AFTER_PHOTO
+  CHECKLIST_PHOTO
+}
+
+enum InvoiceLineType {
+  SERVICE
+  PART
+  EXTRA
+  SURCHARGE
+  DISCOUNT
+}
+
+enum VerificationOutcome {
+  VERIFIED
+  VERIFIED_WITH_ISSUE
+  REWORK
+  DISPUTED
+  AUTO_RELEASED
+}
+
+enum VerificationChannel {
+  CALL
+  SMS_LINK
+  WHATSAPP_LINK
+  IVR
+}
+
+enum VerificationAttemptResult {
+  NO_ANSWER
+  ANSWERED
+  CONFIRMED
+  WRONG_PERSON
+}
+
+enum LedgerAccountType {
+  CUSTOMER
+  PROVIDER_WALLET
+  PLATFORM_ESCROW
+  PLATFORM_COMMISSION
+  PENALTY
+}
+
+enum LedgerDirection {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerReason {
+  CAPTURE
+  HOLD
+  RELEASE
+  COMMISSION
+  REFUND
+  PENALTY
+  PAYOUT
+  ADJUSTMENT
+}
+
+enum PayoutStatus {
+  PENDING
+  PROCESSED
+  FAILED
+}
+
+enum CouponDiscountType {
+  PERCENT
+  FLAT
+}
+
+enum ComplaintSeverity {
+  NORMAL
+  SAFETY
+}
+
+enum ComplaintStatus {
+  OPEN
+  UNDER_REVIEW
+  AWAITING_RESPONSE
+  RESOLVED
+  REJECTED
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+}
+
+enum DisputeResolution {
+  FULL_RELEASE
+  PARTIAL_RELEASE
+  FULL_REFUND
+  REFUND_WITH_PENALTY
+}
+
+enum PenaltyCategory {
+  CONDUCT
+  INTEGRITY
+}
+
+enum AppealStatus {
+  NONE
+  PENDING
+  UPHELD
+  OVERTURNED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  EXPIRED
+}
+
+enum NotificationChannel {
+  EMAIL
+  SMS
+  IN_APP
+  WHATSAPP
+}
+
+enum NotificationStatus {
+  QUEUED
+  SENT
+  FAILED
+}
+
+enum OtpPurpose {
+  PHONE_VERIFY
+  LOGIN
+}
+
+// =========================================================================
+// GROUP: IDENTITY  (M2, M3, M12)
+// =========================================================================
+
+model User {
+  id            String    @id @default(uuid())
+  role          UserRole
+  email         String?   @unique
+  phone         String    @unique
+  passwordHash  String
+  isActive      Boolean   @default(true) // soft deactivation only — FR-AD-09
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  customer      Customer?
+  provider      Provider?
+  agentProfile  AgentProfile?
+
+  otpTokens         OtpToken[]
+  passwordResets    PasswordReset[]
+  notifications     Notification[]
+  auditLogsActed    AuditLog[]            @relation("AuditActor")
+  statusChangesMade BookingStatusHistory[] @relation("StatusActor")
+  complaintsRaised  Complaint[]           @relation("ComplaintRaisedBy")
+  complaintsAgainst Complaint[]           @relation("ComplaintAgainst")
+  complaintEvents   ComplaintEvent[]
+
+  @@index([role])
+}
+
+model Customer {
+  id              String    @id @default(uuid())
+  userId          String    @unique
+  user            User      @relation(fields: [userId], references: [id])
+  phoneVerifiedAt DateTime? // FR-CU-03
+
+  addresses     Address[]
+  bookings      Booking[]
+  favorites     ProviderFavorite[]
+  subscriptions Subscription[]
+}
+
+model Provider {
+  id                   String                 @id @default(uuid())
+  userId               String                 @unique
+  user                 User                   @relation(fields: [userId], references: [id])
+  approvalStatus       ProviderApprovalStatus @default(PENDING)
+  approvedByUserId     String?
+  approvalReason       String?
+  experienceYears      Int?
+  qualification        String?
+  profilePictureUrl    String?
+  baseLat              Float?
+  baseLng              Float?
+  workingRadiusKm      Float?
+  ratingAverage        Decimal                @default(0) @db.Decimal(3, 2)
+  ratingCount          Int                    @default(0)
+  demeritPointsCurrent Int                    @default(0)
+  commissionDebt       Decimal                @default(0) @db.Decimal(12, 2)
+  createdAt            DateTime               @default(now())
+
+  documents     ProviderDocument[]
+  services      ProviderService[]
+  serviceAreas  ProviderServiceArea[]
+  availability  ProviderAvailability[]
+  timeOff       ProviderTimeOff[]
+  bookings      Booking[]
+  wallet        Wallet?
+  demeritPoints DemeritPoint[]
+  penalties     Penalty[]
+  payouts       Payout[]
+  favoritedBy   ProviderFavorite[]
+  ratings       Rating[]
+
+  @@index([approvalStatus])
+}
+
+// Links a User(role=VERIFICATION_AGENT) to constraints needed for FR-VC-10
+// (an agent must not verify a booking where the agent's own linked customer
+// or provider account is a party to that booking).
+model AgentProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  calls VerificationCall[]
+}
+
+model ProviderDocument {
+  id                  String    @id @default(uuid())
+  providerId          String
+  provider            Provider  @relation(fields: [providerId], references: [id])
+  type                String    // CNIC | TRADE_CERTIFICATE | CHARACTER_CERTIFICATE
+  fileUrl             String
+  uploadedAt          DateTime  @default(now())
+  verifiedAt          DateTime?
+  verifiedByUserId    String?
+}
+
+model OtpToken {
+  id         String     @id @default(uuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id])
+  purpose    OtpPurpose
+  codeHash   String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime   @default(now())
+}
+
+model PasswordReset {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id])
+  tokenHash String
+  expiresAt DateTime
+  usedAt    DateTime?
+}
+
+// =========================================================================
+// GROUP: CATALOGUE  (M1)
+// =========================================================================
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+
+  services        Service[]
+  commissionRules CommissionRule[]
+}
+
+model Service {
+  id                       String       @id @default(uuid())
+  categoryId               String
+  category                 Category     @relation(fields: [categoryId], references: [id])
+  name                     String
+  description              String?
+  pricingModel             PricingModel
+  basePrice                Decimal?     @db.Decimal(12, 2)
+  priceBandMin             Decimal?     @db.Decimal(12, 2)
+  priceBandMax             Decimal?     @db.Decimal(12, 2)
+  estimatedDurationMinutes Int?
+  isEmergencyEligible      Boolean      @default(false) // FR-CAT-06
+  isPlanEligible           Boolean      @default(false) // FR-CAT-07
+  isWarrantyEligible       Boolean      @default(false) // FR-CAT-07
+  warrantyDays             Int?
+  isHighRisk               Boolean      @default(false) // verification tier bias, Section 3.3
+
+  providerServices ProviderService[]
+  bookings         Booking[]
+  planServices     MaintenancePlanService[]
+  checklistItems   ServiceChecklistItem[]
+
+  @@index([categoryId])
+}
+
+// Fixed checklist steps per service — supports FR-EX-08.
+model ServiceChecklistItem {
+  id                String  @id @default(uuid())
+  serviceId         String
+  service           Service @relation(fields: [serviceId], references: [id])
+  label             String
+  requiresPhoto     Boolean @default(false)
+  displayOrder      Int     @default(0)
+}
+
+model ProviderService {
+  id          String   @id @default(uuid())
+  providerId  String
+  provider    Provider @relation(fields: [providerId], references: [id])
+  serviceId   String
+  service     Service  @relation(fields: [serviceId], references: [id])
+  customPrice Decimal? @db.Decimal(12, 2) // FR-CAT-04, must fall within admin band
+
+  @@unique([providerId, serviceId])
+}
+
+model CommissionRule {
+  id         String          @id @default(uuid())
+  scope      CommissionScope
+  categoryId String?
+  category   Category?       @relation(fields: [categoryId], references: [id])
+  providerId String?
+  percentage Decimal         @db.Decimal(5, 2)
+  createdAt  DateTime        @default(now())
+}
+
+// =========================================================================
+// GROUP: PLACE & TIME  (supports M4, M5)
+// =========================================================================
+
+model City {
+  id   String @id @default(uuid())
+  name String @unique
+
+  areas         Area[]
+  serviceAreas  ProviderServiceArea[]
+}
+
+model Area {
+  id     String @id @default(uuid())
+  cityId String
+  city   City   @relation(fields: [cityId], references: [id])
+  name   String
+
+  addresses    Address[]
+  serviceAreas ProviderServiceArea[]
+
+  @@unique([cityId, name])
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  areaId     String
+  area       Area     @relation(fields: [areaId], references: [id])
+  label      String?
+  line1      String
+  lat        Float
+  lng        Float
+
+  bookings Booking[]
+}
+
+model ProviderServiceArea {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  cityId     String
+  city       City     @relation(fields: [cityId], references: [id])
+  areaId     String?
+  area       Area?    @relation(fields: [areaId], references: [id])
+}
+
+model ProviderAvailability {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  dayOfWeek  Int      // 0=Sun .. 6=Sat
+  startTime  String   // "09:00"
+  endTime    String   // "18:00"
+}
+
+model ProviderTimeOff {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  date       DateTime @db.Date
+  reason     String?
+}
+
+model ProviderFavorite {
+  id         String   @id @default(uuid())
+  customerId String
+  customer   Customer @relation(fields: [customerId], references: [id])
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+
+  @@unique([customerId, providerId])
+}
+
+// =========================================================================
+// GROUP: JOBS  (M5, M6)
+// =========================================================================
+
+model Booking {
+  id                 String            @id @default(uuid())
+  customerId         String
+  customer           Customer          @relation(fields: [customerId], references: [id])
+  providerId         String?           // null while in auto-assign
+  provider           Provider?         @relation(fields: [providerId], references: [id])
+  serviceId          String
+  service            Service           @relation(fields: [serviceId], references: [id])
+  addressId          String
+  address            Address           @relation(fields: [addressId], references: [id])
+
+  scheduledStart     DateTime
+  scheduledEnd       DateTime
+  status             BookingStatus     @default(REQUESTED)
+  isEmergency        Boolean           @default(false)
+  problemDescription String?
+
+  quotedAmount       Decimal?          @db.Decimal(12, 2)
+  finalAmount        Decimal?          @db.Decimal(12, 2)
+  paymentMode        PaymentMode
+  verificationTier   VerificationTier?
+
+  startOtpCodeHash      String?
+  startOtpVerifiedAt    DateTime?       // FR-EX-02; gates WORK_COMPLETED (10.3 rule 2)
+  checkinAt             DateTime?       // geofenced
+  checkoutAt            DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  photos            BookingPhoto[]
+  statusHistory     BookingStatusHistory[]
+  evidence          JobEvidence[]
+  checklistResults  JobChecklistResult[]
+  quoteRevisions    QuoteRevision[]
+  invoice           Invoice?
+  verificationCall  VerificationCall?
+  ledgerEntries     LedgerEntry[]
+  payment           Payment?
+  refunds           Refund[]
+  complaints        Complaint[]
+  dispute           Dispute?
+  rating            Rating?
+  planEntitlement   PlanEntitlement?
+  penalties         Penalty[]
+
+  @@index([status])
+  @@index([providerId, status])
+  @@index([customerId])
+}
+
+model BookingPhoto {
+  id        String  @id @default(uuid())
+  bookingId String
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  url       String  // FR-BK-03, up to 5 per booking (enforced in application layer)
+}
+
+model BookingStatusHistory {
+  id           String        @id @default(uuid())
+  bookingId    String
+  booking      Booking       @relation(fields: [bookingId], references: [id])
+  fromStatus   BookingStatus?
+  toStatus     BookingStatus
+  actorUserId  String?
+  actor        User?         @relation("StatusActor", fields: [actorUserId], references: [id])
+  reason       String?
+  createdAt    DateTime      @default(now())
+
+  @@index([bookingId])
+}
+
+model JobEvidence {
+  id        String       @id @default(uuid())
+  bookingId String
+  booking   Booking      @relation(fields: [bookingId], references: [id])
+  type      EvidenceType
+  url       String
+  takenAt   DateTime     @default(now())
+}
+
+model JobChecklistResult {
+  id            String   @id @default(uuid())
+  bookingId     String
+  booking       Booking  @relation(fields: [bookingId], references: [id])
+  checklistItem String
+  isCompleted   Boolean  @default(false)
+  evidenceUrl   String?
+}
+
+model QuoteRevision {
+  id                 String    @id @default(uuid())
+  bookingId          String
+  booking            Booking   @relation(fields: [bookingId], references: [id])
+  amount             Decimal   @db.Decimal(12, 2)
+  reason             String
+  approvedByCustomer Boolean   @default(false)
+  approvedAt         DateTime?
+  createdAt          DateTime  @default(now())
+}
+
+model Invoice {
+  id             String        @id @default(uuid())
+  bookingId      String        @unique
+  booking        Booking       @relation(fields: [bookingId], references: [id])
+  serviceAmount  Decimal       @db.Decimal(12, 2)
+  extrasAmount   Decimal       @default(0) @db.Decimal(12, 2)
+  partsAmount    Decimal       @default(0) @db.Decimal(12, 2)
+  surcharge      Decimal       @default(0) @db.Decimal(12, 2)
+  discount       Decimal       @default(0) @db.Decimal(12, 2)
+  totalAmount    Decimal       @db.Decimal(12, 2)
+  generatedAt    DateTime      @default(now())
+
+  lines InvoiceLine[]
+}
+
+model InvoiceLine {
+  id          String          @id @default(uuid())
+  invoiceId   String
+  invoice     Invoice         @relation(fields: [invoiceId], references: [id])
+  type        InvoiceLineType
+  description String
+  quantity    Decimal         @default(1) @db.Decimal(10, 2)
+  unitCost    Decimal         @db.Decimal(12, 2)
+  lineTotal   Decimal         @db.Decimal(12, 2)
+}
+
+// =========================================================================
+// GROUP: VERIFICATION  (M7)
+// =========================================================================
+
+model VerificationCall {
+  id                  String               @id @default(uuid())
+  bookingId           String               @unique
+  booking             Booking              @relation(fields: [bookingId], references: [id])
+  tier                VerificationTier
+  agentId             String?              // null for Tier B automated confirmations
+  agent               AgentProfile?        @relation(fields: [agentId], references: [id])
+  outcome             VerificationOutcome?
+  consentToRelease    Boolean?
+  extraChargeDemanded Boolean?             // FR-VC integrity question, Section 4.5
+  quality             Int?                 // 1–5
+  punctuality         Int?
+  conduct             Int?
+  cleanliness         Int?
+  remarkText          String?
+  recordingRef        String?
+  callDurationSeconds Int?
+  submittedAt         DateTime?            // record becomes immutable once set — 10.3 rule 5
+  createdAt           DateTime             @default(now())
+
+  attempts VerificationCallAttempt[]
+  rating   Rating?
+
+  @@index([outcome])
+}
+
+model VerificationCallAttempt {
+  id                 String                    @id @default(uuid())
+  verificationCallId String
+  verificationCall   VerificationCall          @relation(fields: [verificationCallId], references: [id])
+  attemptNumber      Int
+  channel            VerificationChannel
+  result             VerificationAttemptResult
+  attemptedAt        DateTime                  @default(now())
+}
+
+// =========================================================================
+// GROUP: MONEY  (M8)
+// =========================================================================
+
+model Wallet {
+  id          String   @id @default(uuid())
+  providerId  String   @unique
+  provider    Provider @relation(fields: [providerId], references: [id])
+  balance     Decimal  @default(0) @db.Decimal(12, 2) // released, payable
+  heldBalance Decimal  @default(0) @db.Decimal(12, 2) // in escrow, not yet released
+  updatedAt   DateTime @updatedAt
+}
+
+model Payment {
+  id         String        @id @default(uuid())
+  bookingId  String        @unique
+  booking    Booking       @relation(fields: [bookingId], references: [id])
+  gatewayRef String?       @unique // used to enforce idempotent callbacks — FR-PY-09
+  amount     Decimal       @db.Decimal(12, 2)
+  status     PaymentStatus @default(PENDING)
+  capturedAt DateTime?
+  createdAt  DateTime      @default(now())
+}
+
+// Append-only double-entry ledger. Balances are ALWAYS derived by summing
+// entries — never stored as an editable field (Design Constraint, Sec 2.5).
+model LedgerEntry {
+  id              String            @id @default(uuid())
+  bookingId       String?
+  booking         Booking?          @relation(fields: [bookingId], references: [id])
+  accountType     LedgerAccountType
+  accountId       String            // providerId, customerId, or a platform-account constant
+  direction       LedgerDirection
+  amount          Decimal           @db.Decimal(12, 2)
+  reason          LedgerReason
+  relatedEntryId  String?           // links the paired debit/credit half
+  createdAt       DateTime          @default(now())
+
+  @@index([bookingId])
+  @@index([accountType, accountId])
+}
+
+model Payout {
+  id          String       @id @default(uuid())
+  providerId  String
+  provider    Provider     @relation(fields: [providerId], references: [id])
+  amount      Decimal      @db.Decimal(12, 2)
+  batchRef    String?
+  status      PayoutStatus @default(PENDING)
+  requestedAt DateTime     @default(now())
+  processedAt DateTime?
+}
+
+model Refund {
+  id        String   @id @default(uuid())
+  bookingId String
+  booking   Booking  @relation(fields: [bookingId], references: [id])
+  amount    Decimal  @db.Decimal(12, 2)
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model Coupon {
+  id           String             @id @default(uuid())
+  code         String             @unique
+  discountType CouponDiscountType
+  value        Decimal            @db.Decimal(12, 2)
+  maxUses      Int?
+  usedCount    Int                @default(0)
+  expiresAt    DateTime?
+}
+
+// =========================================================================
+// GROUP: TRUST & CONDUCT  (M9, M10, M15)
+// =========================================================================
+
+// A Rating row may only exist against a VerificationCall with a completed
+// outcome — enforced by the unique, required FK below (Integrity Rule 10.3-1).
+model Rating {
+  id                 String           @id @default(uuid())
+  verificationCallId String           @unique
+  verificationCall   VerificationCall @relation(fields: [verificationCallId], references: [id])
+  bookingId          String           @unique
+  booking            Booking          @relation(fields: [bookingId], references: [id])
+  providerId         String
+  provider           Provider         @relation(fields: [providerId], references: [id])
+  score              Decimal          @db.Decimal(3, 2) // avg of quality/punctuality/conduct/cleanliness
+  isSuppressed       Boolean          @default(false)   // true for auto-released jobs — FR-VC-07
+  publishedAt        DateTime         @default(now())
+
+  remark Remark?
+
+  @@index([providerId])
+}
+
+model Remark {
+  id                 String    @id @default(uuid())
+  ratingId           String    @unique
+  rating             Rating    @relation(fields: [ratingId], references: [id])
+  text               String
+  isPublished        Boolean   @default(true)
+  unpublishedReason  String?
+  providerReplyText  String?
+  providerRepliedAt  DateTime?
+}
+
+model Complaint {
+  id             String            @id @default(uuid())
+  bookingId      String?
+  booking        Booking?          @relation(fields: [bookingId], references: [id])
+  raisedByUserId String
+  raisedBy       User              @relation("ComplaintRaisedBy", fields: [raisedByUserId], references: [id])
+  againstUserId  String?
+  against        User?             @relation("ComplaintAgainst", fields: [againstUserId], references: [id])
+  severity       ComplaintSeverity @default(NORMAL)
+  status         ComplaintStatus   @default(OPEN)
+  description    String
+  createdAt      DateTime          @default(now())
+  resolvedAt     DateTime?
+
+  events ComplaintEvent[]
+
+  @@index([status])
+}
+
+model ComplaintEvent {
+  id           String    @id @default(uuid())
+  complaintId  String
+  complaint    Complaint @relation(fields: [complaintId], references: [id])
+  actorUserId  String
+  actor        User      @relation(fields: [actorUserId], references: [id])
+  eventType    String    // e.g. STATUS_CHANGE, EVIDENCE_ADDED, REPLY
+  note         String?
+  createdAt    DateTime  @default(now())
+}
+
+model Dispute {
+  id               String             @id @default(uuid())
+  bookingId        String             @unique
+  booking          Booking            @relation(fields: [bookingId], references: [id])
+  status           DisputeStatus      @default(OPEN)
+  resolution       DisputeResolution?
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  notes            String?
+}
+
+model Penalty {
+  id               String          @id @default(uuid())
+  providerId       String
+  provider         Provider        @relation(fields: [providerId], references: [id])
+  bookingId        String?
+  booking          Booking?        @relation(fields: [bookingId], references: [id])
+  breachType       String          // matches Section 7.2 schedule row
+  category         PenaltyCategory
+  points           Int
+  financialAmount  Decimal?        @db.Decimal(12, 2)
+  appliedAt        DateTime        @default(now())
+  appealStatus     AppealStatus    @default(NONE)
+
+  demeritPoints DemeritPoint[]
+}
+
+model DemeritPoint {
+  id         String   @id @default(uuid())
+  providerId String
+  provider   Provider @relation(fields: [providerId], references: [id])
+  penaltyId  String?
+  penalty    Penalty? @relation(fields: [penaltyId], references: [id])
+  points     Int
+  awardedAt  DateTime @default(now())
+  expiresAt  DateTime // rolling 180-day window, FR-PN-02
+
+  @@index([providerId])
+}
+
+// =========================================================================
+// GROUP: PLATFORM  (M11, M12, M13, M14)
+// =========================================================================
+
+model MaintenancePlan {
+  id             String   @id @default(uuid())
+  name           String
+  description    String?
+  priceAmount    Decimal  @db.Decimal(12, 2)
+  includedVisits Int
+  cycleMonths    Int
+
+  eligibleServices MaintenancePlanService[]
+  subscriptions    Subscription[]
+}
+
+model MaintenancePlanService {
+  id        String          @id @default(uuid())
+  planId    String
+  plan      MaintenancePlan @relation(fields: [planId], references: [id])
+  serviceId String
+  service   Service         @relation(fields: [serviceId], references: [id])
+
+  @@unique([planId, serviceId])
+}
+
+model Subscription {
+  id              String             @id @default(uuid())
+  customerId      String
+  customer        Customer           @relation(fields: [customerId], references: [id])
+  planId          String
+  plan            MaintenancePlan    @relation(fields: [planId], references: [id])
+  status          SubscriptionStatus @default(ACTIVE)
+  startedAt       DateTime           @default(now())
+  renewalDate     DateTime
+  remainingVisits Int
+
+  entitlements PlanEntitlement[]
+}
+
+model PlanEntitlement {
+  id             String        @id @default(uuid())
+  subscriptionId String
+  subscription   Subscription  @relation(fields: [subscriptionId], references: [id])
+  bookingId      String?       @unique
+  booking        Booking?      @relation(fields: [bookingId], references: [id])
+  usedAt         DateTime?
+}
+
+model Notification {
+  id         String              @id @default(uuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id])
+  channel    NotificationChannel
+  templateId String?
+  template   NotificationTemplate? @relation(fields: [templateId], references: [id])
+  payload    Json?
+  status     NotificationStatus  @default(QUEUED)
+  sentAt     DateTime?
+  createdAt  DateTime            @default(now())
+
+  @@index([userId, status])
+}
+
+model NotificationTemplate {
+  id       String              @id @default(uuid())
+  eventKey String              // e.g. BOOKING_CONFIRMED, VERIFICATION_PENDING
+  channel  NotificationChannel
+  subject  String?
+  body     String
+
+  notifications Notification[]
+
+  @@unique([eventKey, channel])
+}
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique // e.g. AUTO_RELEASE_WINDOW_HOURS, CALLING_HOURS_START
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// Append-only. No update/delete path should be exposed at the application
+// or DB-privilege layer (Design Constraint, Sec 2.5; NFR-IN-03).
+model AuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String?
+  actor        User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  action       String
+  entityType   String
+  entityId     String
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorUserId])
+}
